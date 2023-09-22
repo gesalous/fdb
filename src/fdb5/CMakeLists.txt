@@ -244,6 +244,7 @@ if( HAVE_TOCFDB )
         toc/AdoptVisitor.cc
         toc/AdoptVisitor.h
         toc/BTreeIndex.cc
+        toc/LSMIndex.cc
         toc/BTreeIndex.h
         toc/Root.cc
         toc/Root.h
