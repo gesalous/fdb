@@ -1,6 +1,27 @@
 cmake_minimum_required( VERSION 3.12 FATAL_ERROR )
-
+# include(FetchContent)
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package( ecbuild 3.7 REQUIRED HINTS ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../ecbuild)
+
+# Search for the library in /home/gesalous/local/lib
+find_library(PARALLAX_LIBRARY 
+             NAMES parallax
+             HINTS /home/gesalous/local/lib)
+
+# Search for the header in /home/gesalous/local/include
+find_path(PARALLAX_INCLUDE_DIR 
+          NAMES parallax.h 
+          HINTS /home/gesalous/local/include)
+
+
+if(PARALLAX_LIBRARY AND PARALLAX_INCLUDE_DIR)
+  message(INFO  "--> Parallax found!")
+  message(INFO " --> Library: ${PARALLAX_LIBRARY}")
+  message(INFO " --> Include directory: ${PARALLAX_INCLUDE_DIR}")
+else()
+  message(FATAL_ERROR "Parallax not found!")
+endif()
+
 
 project( fdb5 LANGUAGES C CXX )
 
@@ -25,6 +46,8 @@ ecbuild_find_package( NAME eckit  VERSION 1.24.4 REQUIRED )
 ### GRIB support
 
 ecbuild_find_package( NAME eccodes VERSION 2.10 QUIET )
+
+
 
 ecbuild_add_option( FEATURE GRIB
                     DEFAULT ON
@@ -113,7 +136,6 @@ endif()
 include(cmake/compiler_warnings.cmake) # optionally handle compiler specific warnings
 
 set( fdb5_INCLUDE_DIRS  ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/src )
-
 include_directories( ${fdb5_INCLUDE_DIRS} )
 
 set_directory_properties( PROPERTIES COMPILE_DEFINITIONS "${ECKIT_DEFINITIONS};${ECCODES_DEFINITIONS}" )
@@ -124,8 +146,7 @@ get_directory_property( fdb5_DEFINITIONS COMPILE_DEFINITIONS )
 
 add_subdirectory( src )
 add_subdirectory( tests )
-
-### finalize
+include_directories( ${PARALLAX_INCLUDE_DIR} )
 
 ecbuild_install_project( NAME fdb )
 
