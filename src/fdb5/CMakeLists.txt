@@ -395,11 +395,13 @@ ecbuild_add_library(
     PRIVATE_INCLUDES
         "${PMEM_INCLUDE_DIRS}"
         "${LUSTREAPI_INCLUDE_DIRS}"
+        "${PARALLAX_INCLUDE_DIR}"
 
     PRIVATE_LIBS
         ${grib_handling_pkg}
         ${PMEM_LIBRARIES}
         ${LUSTREAPI_LIBRARIES}
+        ${PARALLAX_LIB}
 )
 
 if(HAVE_FDB_BUILD_TOOLS)

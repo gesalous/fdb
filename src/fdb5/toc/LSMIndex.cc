@@ -7,6 +7,8 @@
  * granted to it by virtue of its status as an intergovernmental organisation nor
  * does it submit to any jurisdiction.
  */
+
+#include <parallax.h>
 #include <signal.h>
 #include <iostream>
 #include "eckit/config/Resource.h"
@@ -65,6 +67,9 @@ public:
 
     void visit(BTreeIndexVisitor& visitor) const {
         LOG_DEBUG("LSM visit operation.");
+    }
+    void preload() {
+        LOG_DEBUG("PRELOAD bitches");
     }
 };
 
