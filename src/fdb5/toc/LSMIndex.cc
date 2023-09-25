@@ -8,68 +8,174 @@
  * does it submit to any jurisdiction.
  */
 
+#include <openssl/md5.h>
 #include <parallax.h>
 #include <signal.h>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include "eckit/config/Resource.h"
 #include "eckit/log/BigNum.h"
 #include "fdb5/toc/BTreeIndex.h"
 #include "fdb5/toc/FieldRef.h"
 #include "fdb5/toc/TocIndex.h"
+
+#define PARALLAX_VOLUME_ENV_VAR "PARH5_VOLUME"
+#define PARALLAX_VOLUME_FORMAT_ENV_VAR "PARH5_VOLUME_FORMAT"
+#define PARALLAX_VOLUME "par.dat"
+#define PARALLAX_L0_SIZE (16 * 1024 * 1024);
+#define PARALLAX_GROWTH_FACTOR 8
+/* The value must be between 256 and 65535 (inclusive) */
+#define PARALLAX_VOL_CONNECTOR_VALUE ((H5VL_class_value_t)12202)
+#define PARALLAX_VOL_CONNECTOR_NAME "parallax_vol_connector"
+#define PARALLAX_VOL_CONNECTOR_NAME_SIZE 128
+
+#include <cstdio>
+#include <iostream>
+#include <string>
+
+
 namespace fdb5 {
+#define LSM_DEBUG(...)                                                       \
+    do {                                                                     \
+        char buffer[1024];                                                   \
+        snprintf(buffer, sizeof(buffer), __VA_ARGS__);                       \
+        ::std::cout << __FILE__ << ":" << __func__ << ":" << __LINE__ << " " \
+                    << " DEBUG: " << buffer << ::std::endl;                  \
+    } while (0);
 
-#define LOG_DEBUG(msg)                                                 \
-    std::cout << __FILE__ << ":" << __func__ << ":" << __LINE__ << " " \
-              << " DEBUG: " << msg << std::endl;
+
+#define LSM_FATAL(...)                                                \
+    do {                                                              \
+        char buffer[1024];                                            \
+        snprintf(buffer, sizeof(buffer), __VA_ARGS__);                \
+        ::std::cout << __FILE__ << ":" << __func__ << ":" << __LINE__ \
+                    << " FATAL: " << buffer << ::std::endl;           \
+        _exit(EXIT_FAILURE);                                          \
+    } while (0);
 
 
-#define LOG_FATAL(msg)                                                                             \
-    std::cout << __FILE__ << ":" << __func__ << ":" << __LINE__ << " FATAL: " << msg << std::endl; \
-    _exit(EXIT_FAILURE);
 //----------------------------------------------------------------------------------------------------------------------
+class ParallaxStore {
+    const char* par_volume_name;
+
+public:
+    static const char* getVolumeName(void) {
+        static ParallaxStore instance;
+        return instance.par_volume_name;
+    }
+
+    // Disallow copying and assignment
+    ParallaxStore(const ParallaxStore&)            = delete;
+    ParallaxStore& operator=(const ParallaxStore&) = delete;
+
+    void initializeStore() {
+        par_volume_name = getenv(PARALLAX_VOLUME_ENV_VAR);
+        if (NULL == par_volume_name)
+            par_volume_name = PARALLAX_VOLUME;
+
+        const char* parh5_format_volume = getenv(PARALLAX_VOLUME_FORMAT_ENV_VAR);
+        if (NULL != par_volume_name) {
+            const char* error = par_format((char*)par_volume_name, 128);
+            if (error) {
+                LSM_FATAL("Failed to format volume %s", par_volume_name);
+            }
+        }
+    }
+
+private:
+    ParallaxStore() {
+        // Private constructor
+        initializeStore();
+    }
+
+    ~ParallaxStore() {
+        // Cleanup if necessary
+    }
+};
+
 
 class LSMIndex : public BTreeIndex {
+    par_handle parallax_handle;
 
 public:
     LSMIndex(const eckit::PathName& path, bool readOnly, off_t offset) {
-        LOG_DEBUG("Initializing LSM index: " + path.asString());
+
+        // create the dummy index file so fdb-hammer does not nag
+        std::ofstream outfile(path.asString());
+        // ... write to the file or do other things with it.
+        std::string dbName = md5(path.asString());
+        std::cout << "DB name is " << path.asString() << "hash  name: " << dbName << std::endl;
+
+        par_db_options db_options               = {.volume_name = (char*)ParallaxStore::getVolumeName(),
+                                                   .db_name     = dbName.c_str(),
+                                                   .create_flag = PAR_CREATE_DB,
+                                                   .options     = par_get_default_options()};
+        db_options.options[LEVEL0_SIZE].value   = PARALLAX_L0_SIZE;
+        db_options.options[GROWTH_FACTOR].value = PARALLAX_GROWTH_FACTOR;
+        db_options.options[PRIMARY_MODE].value  = 1;
+
+        const char* error_message = NULL;
+
+        parallax_handle = par_open(&db_options, &error_message);
+        if (error_message)
+            LSM_DEBUG("Parallax says: %s", error_message);
+
+        if (parallax_handle == NULL && error_message)
+            LSM_FATAL("Error uppon opening the DB, error %s", error_message);
     }
 
     ~LSMIndex() {
-        LOG_DEBUG("Destroying LSM index.");
+        LSM_DEBUG("Destroying LSM index.");
     }
 
-    bool get(const std::string& key, FieldRef& data) const {
-        LOG_DEBUG("LSM get operation.");
+    bool get(const ::std::string& key, FieldRef& data) const {
+        LSM_DEBUG("LSM get operation.");
         return true;
     }
 
     bool set(const std::string& key, const FieldRef& data) {
-        LOG_DEBUG("LSM set operation.");
+        LSM_DEBUG("LSM set operation.");
         return true;
     }
 
     void flush() {
-        LOG_DEBUG("LSM flush operation.");
+        LSM_DEBUG("LSM flush operation.");
     }
 
     void sync() {
-        LOG_DEBUG("LSM sync operation.");
+        LSM_DEBUG("LSM sync operation.");
     }
 
     void flock() {
-        LOG_DEBUG("LSM flock operation.");
+        LSM_DEBUG("LSM flock operation.");
     }
 
     void funlock() {
-        LOG_DEBUG("LSM funlock operation.");
+        LSM_DEBUG("LSM funlock operation.");
     }
 
     void visit(BTreeIndexVisitor& visitor) const {
-        LOG_DEBUG("LSM visit operation.");
+        LSM_DEBUG("LSM visit operation.");
     }
     void preload() {
-        LOG_DEBUG("PRELOAD bitches");
+        LSM_DEBUG("PRELOAD bitches");
+    }
+
+private:
+    std::string md5(const std::string& data) {
+        unsigned char digest[MD5_DIGEST_LENGTH];
+
+        // Calculate the MD5 hash of the input data
+        MD5(reinterpret_cast<const unsigned char*>(data.c_str()), data.size(), digest);
+
+        // Convert the binary hash to a hexadecimal string
+        std::ostringstream oss;
+        for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+            oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(digest[i]);
+        }
+
+        return oss.str();
     }
 };
 
@@ -80,7 +186,7 @@ class LSMIndexVisitor {
 public:
     LSMIndexVisitor(BTreeIndexVisitor& visitor) :
         visitor_(visitor) {
-        LOG_DEBUG("Initializing Index Visitor.");
+        LSM_DEBUG("Initializing Index Visitor.");
     }
 
     void clear() {
