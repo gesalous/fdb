@@ -14,6 +14,7 @@ find_path(PARALLAX_INCLUDE_DIR
           HINTS ${CMAKE_INSTALL_PREFIX}/include)
 
 
+
 if(PARALLAX_LIBRARY AND PARALLAX_INCLUDE_DIR)
   message(INFO  "--> Parallax found!")
   message(INFO " --> Library: ${PARALLAX_LIBRARY}")
