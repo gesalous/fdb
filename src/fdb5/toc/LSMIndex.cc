@@ -14,8 +14,11 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include "ParallaxSerDes.h"
 #include "eckit/config/Resource.h"
+#include "eckit/io/Offset.h"
 #include "eckit/log/BigNum.h"
+#include "eckit/persist/DumpLoad.h"
 #include "fdb5/toc/BTreeIndex.h"
 #include "fdb5/toc/FieldRef.h"
 #include "fdb5/toc/TocIndex.h"
@@ -135,7 +138,16 @@ public:
     }
 
     bool set(const std::string& key, const FieldRef& data) {
-        LSM_DEBUG("LSM set operation.");
+        LSM_DEBUG("LSM set operation. %s", key.c_str());
+        std::cout << "Data lentgh " << data.length() << std::endl;
+        fdb5::ParallaxSerDes<128> serializer;
+        eckit::DumpLoad& baseRef      = serializer;
+        FieldRefLocation::UriID uriId = data.uriId();
+        const eckit::Offset& offset   = data.offset();
+        const eckit::Length& length   = data.length();
+        offset.dump(baseRef);
+        length.dump(baseRef);
+
         return true;
     }
 
