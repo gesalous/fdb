@@ -387,23 +387,26 @@ ecbuild_add_library(
         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 
+
     PUBLIC_LIBS
         metkit
         eckit
         eckit_option
 
+
     PRIVATE_INCLUDES
         "${PMEM_INCLUDE_DIRS}"
         "${LUSTREAPI_INCLUDE_DIRS}"
-        "${PARALLAX_INCLUDE_DIR}"
+        #"${PARALLAX_INCLUDE_DIR}"
+
 
     PRIVATE_LIBS
         ${grib_handling_pkg}
         ${PMEM_LIBRARIES}
         ${LUSTREAPI_LIBRARIES}
-        ${PARALLAX_LIB}
 )
 
+target_link_libraries(fdb5 PRIVATE ${PARALLAX_LIBRARY})
 if(HAVE_FDB_BUILD_TOOLS)
 
   list( APPEND fdb5_scripts fdb fdb-which )
@@ -450,12 +453,12 @@ foreach( _tool ${fdb5_tools} )
                           CONDITION HAVE_FDB_BUILD_TOOLS
                           SOURCES   tools/${_tool}.cc
                           INCLUDES  ${ECCODES_INCLUDE_DIRS}  # Please don't remove me, I am needed
-                          LIBS      fdb5 )
+                          LIBS      fdb5)
 
 endforeach()
 
 if (HAVE_FDB_BUILD_TOOLS)
-    target_link_libraries( fdb-move eckit_distributed )
+  target_link_libraries( fdb-move eckit_distributed)
 endif()
 
 ecbuild_add_executable( TARGET    grib2fdb5
