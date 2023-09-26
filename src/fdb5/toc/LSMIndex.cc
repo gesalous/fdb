@@ -133,7 +133,7 @@ public:
     }
 
     bool get(const ::std::string& key, FieldRef& data) const {
-        LSM_DEBUG("LSM get operation.");
+        LSM_FATAL("LSM get operation (unimplemented XXX TODO XXX).");
         return true;
     }
 
@@ -145,8 +145,24 @@ public:
         FieldRefLocation::UriID uriId = data.uriId();
         const eckit::Offset& offset   = data.offset();
         const eckit::Length& length   = data.length();
+        baseRef.beginObject("test");
         offset.dump(baseRef);
         length.dump(baseRef);
+        baseRef.dump(uriId);
+        baseRef.endObject();
+        const char* error_msg = NULL;
+        const char* key_str   = key.c_str();
+        par_key_value KV;
+        KV.k.size       = strlen(key_str) + 1;
+        KV.k.data       = key_str;
+        KV.v.val_size   = serializer.getSize();
+        KV.v.val_buffer = (char*)serializer.getBuffer();
+        par_put(this->parallax_handle, &KV, &error_msg);
+        if (error_msg) {
+            std::cout << "Sorry Parallax put failed reason: " << error_msg << std ::endl;
+            _exit(EXIT_FAILURE);
+        }
+        std::cout << "Success!" << std::endl;
 
         return true;
     }
