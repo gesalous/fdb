@@ -138,9 +138,9 @@ public:
     }
 
     bool set(const std::string& key, const FieldRef& data) {
-        LSM_DEBUG("LSM set operation. %s", key.c_str());
-        std::cout << "Data lentgh " << data.length() << std::endl;
-        fdb5::ParallaxSerDes<128> serializer;
+        // LSM_DEBUG("LSM set operation. %s", key.c_str());
+        // raise(SIGINT);
+        fdb5::ParallaxSerDes<32> serializer;
         eckit::DumpLoad& baseRef      = serializer;
         FieldRefLocation::UriID uriId = data.uriId();
         const eckit::Offset& offset   = data.offset();
@@ -162,8 +162,8 @@ public:
             std::cout << "Sorry Parallax put failed reason: " << error_msg << std ::endl;
             _exit(EXIT_FAILURE);
         }
-        std::cout << "Success!" << std::endl;
-
+        // static size_t keys_written = 0;
+        // std::cout << "Keys written " << ++keys_written << std::endl;
         return true;
     }
 
@@ -172,7 +172,7 @@ public:
     }
 
     void sync() {
-        LSM_DEBUG("LSM sync operation.");
+        par_sync(this->parallax_handle);
     }
 
     void flock() {
