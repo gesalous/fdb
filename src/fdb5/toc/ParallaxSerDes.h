@@ -2,6 +2,7 @@
 #define PARALLAXSERDES_H
 #include <cstring>
 #include <string>
+#include <unistd.h>
 #include "eckit/persist/DumpLoad.h"
 
 #define SERDES_FATAL(...)                                                    \

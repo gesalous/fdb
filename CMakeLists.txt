@@ -6,7 +6,7 @@ find_package( ecbuild 3.7 REQUIRED HINTS ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CUR
 # Search for the library in /home/gesalous/local/lib
 find_library(PARALLAX_LIBRARY 
              NAMES parallax
-             HINTS ${CMAKE_INSTALL_PREFIX}/lib)
+	     HINTS ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib64)
 
 # Search for the header in /home/gesalous/local/include
 find_path(PARALLAX_INCLUDE_DIR 
