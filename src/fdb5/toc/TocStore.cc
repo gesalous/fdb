@@ -61,7 +61,7 @@ std::unique_ptr<FieldLocation> TocStore::archive(const Key& key, const void* dat
 
     eckit::Offset position = dh.position();
     // gesalous hack
-    // long len = length;
+    //long len = length;
     long len = dh.write(data, length);
 
     ASSERT(len == length);
@@ -72,9 +72,9 @@ std::unique_ptr<FieldLocation> TocStore::archive(const Key& key, const void* dat
 
 void TocStore::flush() {
     // gesalous
-    std::cout << "File: " << __FILE__
-              << ", Function: " << __func__
-              << ", Line: " << __LINE__ << std::endl;
+    // std::cout << "File: " << __FILE__
+    //           << ", Function: " << __func__
+    //           << ", Line: " << __LINE__ << std::endl;
     if (!dirty_) {
         return;
     }

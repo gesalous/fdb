@@ -1,16 +1,17 @@
 #ifndef PARALLAXSERDES_H
 #define PARALLAXSERDES_H
-#include <cstring>
-#include <string>
 #include <unistd.h>
+#include <cstring>
+#include <iostream>
+#include <string>
 #include "eckit/persist/DumpLoad.h"
 
 #define SERDES_FATAL(...)                                                    \
     do {                                                                     \
         char buffer[1024];                                                   \
         snprintf(buffer, sizeof(buffer), __VA_ARGS__);                       \
-        ::std::cout << __FILE__ << ":" << __func__ << ":" << __LINE__ << " " \
-                    << " FATAL(unimplemented): " << buffer << ::std::endl;   \
+        std::cerr << __FILE__ << ":" << __func__ << ":" << __LINE__ << " " \
+                    << " FATAL(unimplemented): " << buffer << "\n";          \
         _exit(EXIT_FAILURE);                                                 \
     } while (0);
 
