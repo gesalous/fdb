@@ -153,6 +153,7 @@ public:
         db_options.options[LEVEL0_SIZE].value   = PARALLAX_L0_SIZE;
         db_options.options[GROWTH_FACTOR].value = PARALLAX_GROWTH_FACTOR;
         db_options.options[PRIMARY_MODE].value  = 1;
+        db_options.options[ENABLE_BLOOM_FILTERS].value  = 1;
 
         const char* error_message = NULL;
 
@@ -170,7 +171,22 @@ public:
     }
 
     bool get(const ::std::string& key, FieldRef& data) const {
-        LSM_FATAL("LSM get operation (unimplemented XXX TODO XXX).");
+        const char* error_msg = NULL;
+        const char* key_str   = key.c_str();
+        struct par_key parallax_key;
+        parallax_key.size       = strlen(key_str) + 1;
+        parallax_key.data       = key_str;
+
+        struct par_value value;
+        // Obtaining a char* pointer to the copy
+        value.val_buffer = reinterpret_cast<char*>(&data);
+        value.val_buffer_size = sizeof(FieldRef);
+        const char *error = NULL;
+        par_get(this->parallax_handle, &parallax_key, &value, &error);
+        if (error) {
+            LSM_DEBUG("Key not found!");
+            return false;
+        }
         return true;
     }
 
@@ -199,6 +215,7 @@ public:
         // Obtaining a char* pointer to the copy
         KV.v.val_buffer = reinterpret_cast<char*>(&dataCopy);
         
+        // LSM_DEBUG("LSM par_put operation...");
         par_put(this->parallax_handle, &KV, &error_msg);
         if (error_msg) {
             std::cout << "Sorry Parallax put failed reason: " << error_msg << std ::endl;
