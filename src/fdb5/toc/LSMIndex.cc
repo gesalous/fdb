@@ -8,7 +8,6 @@
  * does it submit to any jurisdiction.
  */
 #include <assert.h>
-#include <openssl/md5.h>
 #include <parallax.h>
 #include <signal.h>
 #include <fstream>
@@ -142,7 +141,10 @@ public:
         // create the dummy index file so fdb-hammer does not nag
         std::ofstream outfile(path.asString());
         // ... write to the file or do other things with it.
-        std::string dbName = md5(path.asString());
+        size_t hashValue = std::hash<std::string>{}(path.asString());
+        std::ostringstream oss;
+        oss << std::hex << std::setw(2) << std::setfill('0') << hashValue;
+        std::string dbName = oss.str();
         std::cout << "DB name is " << path.asString() << "hash  name: " << dbName << std::endl;
         const char* volume_name = ParallaxStore::getInstance().getVolumeName();
 
@@ -273,21 +275,6 @@ public:
         LSM_DEBUG("Nothing to preload here we are PARALLAX");
     }
 
-private:
-    std::string md5(const std::string& data) {
-        unsigned char digest[MD5_DIGEST_LENGTH];
-
-        // Calculate the MD5 hash of the input data
-        MD5(reinterpret_cast<const unsigned char*>(data.c_str()), data.size(), digest);
-
-        // Convert the binary hash to a hexadecimal string
-        std::ostringstream oss;
-        for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
-            oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(digest[i]);
-        }
-
-        return oss.str();
-    }
 };
 
 
