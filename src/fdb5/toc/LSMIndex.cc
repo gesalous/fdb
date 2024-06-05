@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <parallax.h>
 #include <signal.h>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -28,6 +29,8 @@
 #define PARALLAX_VOLUME_ENV_VAR "PARH5_VOLUME"
 #define PARALLAX_VOLUME_FORMAT "PARH5_VOLUME_FORMAT"
 #define PARALLAX_VOLUME "par.dat"
+#define PARALLAX_GLOBAL_DB "GES"
+#define PARALLAX_MAX_KEY_SIZE 256
 #define PARALLAX_L0_SIZE (16 * 1024 * 1024UL);
 #define PARALLAX_GROWTH_FACTOR 8
 /* The value must be between 256 and 65535 (inclusive) */
@@ -128,7 +131,8 @@ private:
 
 class LSMIndex : public BTreeIndex {
     par_handle parallax_handle;
-
+private:
+  size_t index_id;
 public:
     LSMIndex(const eckit::PathName& path, bool readOnly, off_t offset) {
 
@@ -140,12 +144,19 @@ public:
 
         // create the dummy index file so fdb-hammer does not nag
         std::ofstream outfile(path.asString());
-        // ... write to the file or do other things with it.
-        size_t hashValue = std::hash<std::string>{}(path.asString());
-        std::ostringstream oss;
-        oss << std::hex << std::setw(2) << std::setfill('0') << hashValue;
-        std::string dbName = oss.str();
-        std::cout << "DB name is " << path.asString() << "hash  name: " << dbName << std::endl;
+        //old school
+        // size_t hashValue = std::hash<std::string>{}(path.asString());
+        // std::ostringstream oss;
+        // oss << std::hex << std::setw(2) << std::setfill('0') << hashValue;
+        index_id = std::hash<std::string>{}(path.asString());
+        
+        //old school
+        //std::string dbName = oss.str();
+        //keep a global index
+        std::string dbName = PARALLAX_GLOBAL_DB;
+        //old school
+        //std::cout << "DB name is " << path.asString() << "hash  name: " << dbName << std::endl;
+        std::cout << "Index name is " << path.asString() << "unique index_id:" << index_id << "\n" << std::endl;
         const char* volume_name = ParallaxStore::getInstance().getVolumeName();
 
         par_db_options db_options               = {.volume_name = (char*)volume_name,
@@ -205,10 +216,23 @@ public:
         // baseRef.dump(uriId);
         // baseRef.endObject();
         const char* error_msg = NULL;
-        const char* key_str   = key.c_str();
+        //old school staff
+        //const char* key_str   = key.c_str();
+
+        //Prepend the index id
+        // Calculate the total size needed
+        size_t key_len = key.length();
+        size_t total_size = sizeof(index_id) + key_len + 1;
+        // Allocate memory for the new key
+        char new_key[PARALLAX_MAX_KEY_SIZE] = {0};
+        // Copy the hash_id to the beginning of the new_key_data
+        std::memcpy(new_key, &index_id, sizeof(index_id)); 
+        // Copy the original key after the hash_id bytes
+        std::memcpy(&new_key[sizeof(index_id)], key.c_str(), key_len);
+
         par_key_value KV;
-        KV.k.size       = strlen(key_str) + 1;
-        KV.k.data       = key_str;
+        KV.k.size       = total_size;
+        KV.k.data       = new_key;
         // KV.v.val_size   = serializer.getSize();
         // KV.v.val_buffer = (char*)serializer.getBuffer();
         KV.v.val_size = sizeof(FieldRef);
@@ -247,16 +271,24 @@ public:
     }
 
     void visit(BTreeIndexVisitor& visitor) const {
-        char zero            = 0;
-        struct par_key start = {.size = 1, .data = &zero};
+        //old school
+        // char zero            = 0;
+        // struct par_key start = {.size = 1, .data = &zero};
+        
+        struct par_key start = {.size = sizeof(index_id), .data = (char *)&index_id};
         const char* error    = nullptr;
         par_scanner scanner  = par_init_scanner(parallax_handle, &start, PAR_GREATER_OR_EQUAL, &error);
         if (error)
             LSM_FATAL("Init of scanner failed");
         while (par_is_valid(scanner)) {
             struct par_key parallax_key     = par_get_key(scanner);
+            if (std::memcmp(parallax_key.data, &index_id, sizeof(index_id)) != 0){
+                // LSM_DEBUG("Done with index id: %lu parallax brought key size: %d key data: %.*s", index_id, parallax_key.size, parallax_key.size, parallax_key.data);
+                break;
+            }
+            // LSM_DEBUG("Brought one!");
             struct par_value parallax_value = par_get_value(scanner);
-            const std::string key           = std::string(parallax_key.data, parallax_key.size);
+            const std::string key           = std::string(&parallax_key.data[sizeof(index_id)], parallax_key.size-sizeof(index_id));
             if (parallax_value.val_size != sizeof(FieldRef))
                 LSM_FATAL("Values of FieldRef is wrong");
 
