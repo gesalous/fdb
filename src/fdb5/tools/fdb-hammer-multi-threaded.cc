@@ -31,10 +31,7 @@
 const std::unordered_set<size_t> AWKWARD_PARAMS {11, 12, 13, 14, 15, 16, 49, 51, 52, 61, 121, 122, 146, 147, 169, 175, 176, 177, 179, 189, 201, 202};
 #define NUM_THREADS 4
 const std::vector<std::string> file_names = {"/tmp/0.grib", "/tmp/1.grib", "/tmp/2.grib", "/tmp/3.grib", "/tmp/4.grib", "/tmp/5.grib", "/tmp/6.grib", "/tmp/7.grib"};
-const std::vector<std::string> expvers = {"yyyy", "xxxx", "wwww", "zzzz",
-                                    "xyxy", "xwxw", "xzxz", "wzwz",
-                                    "wzwx", "wzxw", "wzxx", "wzxy",
-                                    "wzzy", "wzzz", "wzyy", "wzyz"};
+std::vector<std::string> expvers;
 
 using namespace eckit;
 
@@ -399,9 +396,22 @@ void FDBWrite::executeList(const eckit::option::CmdArgs &args) {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+void generateCombinations(std::string prefix, int size) {
+    if (size == 0) {
+        expvers.push_back(prefix);
+        return;
+    }
+    for (char c : {'x', 'y', 'w', 'z'}) {
+        generateCombinations(prefix + c, size - 1);
+    }
+}
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
+    generateCombinations("", 4);
+    // Print all combinations
+    for (const auto& combination : expvers) {
+        std::cout << combination << std::endl;
+    }
     FDBWrite app(argc, argv);
     return app.start();
 }
-
