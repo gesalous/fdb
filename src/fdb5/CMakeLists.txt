@@ -484,3 +484,16 @@ if ( HAVE_FDB_BUILD_TOOLS )
     target_sources( fdb-lock PRIVATE tools/FDBLock.cc tools/FDBLock.h )
     target_sources( fdb-unlock PRIVATE tools/FDBLock.cc tools/FDBLock.h )
 endif()
+
+
+# Add the new executable fdb-hammer-multi-threaded
+ecbuild_add_executable(
+        TARGET    fdb-hammer-multi-threaded
+        CONDITION HAVE_FDB_BUILD_TOOLS
+        SOURCES   tools/fdb-hammer-multi-threaded.cc
+        INCLUDES  ${ECCODES_INCLUDE_DIRS}  # Please don't remove me, I am needed
+        LIBS      fdb5
+)
+
+
+
