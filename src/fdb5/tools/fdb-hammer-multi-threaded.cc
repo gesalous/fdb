@@ -28,14 +28,19 @@
 #include "fdb5/tools/FDBTool.h"
 #include "fdb5/api/helpers/FDBToolRequest.h"
 
-// This list is currently sufficient to get to nparams=200 of levtype=ml,type=fc
 const std::unordered_set<size_t> AWKWARD_PARAMS {11, 12, 13, 14, 15, 16, 49, 51, 52, 61, 121, 122, 146, 147, 169, 175, 176, 177, 179, 189, 201, 202};
-
+#define NUM_THREADS 4
+const std::vector<std::string> file_names = {"/tmp/0.grib", "/tmp/1.grib", "/tmp/2.grib", "/tmp/3.grib", "/tmp/4.grib", "/tmp/5.grib", "/tmp/6.grib", "/tmp/7.grib"};
+const std::vector<std::string> expvers = {"yyyy", "xxxx", "wwww", "zzzz",
+                                    "xyxy", "xwxw", "xzxz", "wzwz",
+                                    "wzwx", "wzxw", "wzxx", "wzxy",
+                                    "wzzy", "wzzz", "wzyy", "wzyz"};
 
 using namespace eckit;
 
 
 class FDBWrite : public fdb5::FDBTool {
+
 
     virtual void usage(const std::string &tool) const override;
 
@@ -53,7 +58,7 @@ class FDBWrite : public fdb5::FDBTool {
 
 public:
 
-    FDBWrite(int argc, char **argv, int id) :
+    FDBWrite(int argc, char **argv) :
         fdb5::FDBTool(argc, argv),
         verbose_(false) {
 
@@ -108,27 +113,22 @@ void FDBWrite::execute(const eckit::option::CmdArgs &args) {
 }
 
 void FDBWrite::executeWrite(const eckit::option::CmdArgs& args) {
-    const char* filename_1 = "/tmp/mitsos.grib";
-    const char* filename_2 = "/tmp/soubos.grib";
-    eckit::AutoStdFile fin1(filename_1);
-    int err;
-    codes_handle* handle_1 = codes_handle_new_from_file(nullptr, fin1, PRODUCT_GRIB, &err);
-    ASSERT(handle_1);
-    eckit::AutoStdFile fin2(filename_2);
-    codes_context_get_default();
-    codes_handle* handle_2 = codes_handle_new_from_file(nullptr, fin2, PRODUCT_GRIB, &err);
-    ASSERT(handle_2);
+    codes_handle* handles[NUM_THREADS] = {0};
+    std::array<std::thread, NUM_THREADS> threads;
+    for (int i = 0; i < NUM_THREADS; i++) {
+        int err;
+        eckit::AutoStdFile fin(file_names[i]);
+        handles[i] = codes_handle_new_from_file(nullptr, fin, PRODUCT_GRIB, &err);
+        ASSERT(handles[i]);
+        threads[i] = std::thread(&FDBWrite::executeWriteInternal, this, std::cref(args), i, handles[i]);
+    }
 
-    // Create two threads, each calling executeWriteInternal with a different id
-    std::thread thread1(&FDBWrite::executeWriteInternal, this, std::cref(args), 0, handle_1);
-    std::thread thread2(&FDBWrite::executeWriteInternal, this, std::cref(args), 1, handle_2);
-
-    // Join threads to wait for them to finish execution
-    thread1.join();
-    thread2.join();
+    for (int i = 0; i < NUM_THREADS; i++) {
+        threads[i].join();
+    }
 }
 
-void FDBWrite::executeWriteInternal(const eckit::option::CmdArgs &args, int id, codes_handle *handle) {
+void FDBWrite::executeWriteInternal(const eckit::option::CmdArgs &args, int thread_id, codes_handle *handle) {
 
     //vanilla
     // eckit::AutoStdFile fin(args(0));
@@ -143,18 +143,22 @@ void FDBWrite::executeWriteInternal(const eckit::option::CmdArgs &args, int id, 
     size_t number = args.getLong("number", 1);
     size_t level = args.getLong("level", 1);
 
-    std::vector<std::string> expvers = {"yyyy", "xxxx", "wwww", "zzzz", 
-                                        "xyxy", "xwxw", "xzxz", "wzwz", 
-                                        "wzwx", "wzxw", "wzxx", "wzxy", 
-                                        "wzzy", "wzzz", "wzyy", "wzyz"};
-    std::vector<std::string> half;
-    if (id == 0) {
-        // Slice the vector to get the left half
-        half.assign(expvers.begin(), expvers.begin() + expvers.size() / 2);
-    } else {
-        // Slice the vector to get the right half
-        half.assign(expvers.begin() + expvers.size() / 2, expvers.end());
-    }
+
+
+    // Calculate slice size
+    size_t sliceSize = (expvers.size() + NUM_THREADS - 1) / NUM_THREADS;
+
+
+    // Calculate start and end indices for this thread
+    size_t startIdx = thread_id * sliceSize;
+    size_t endIdx   = std::min((thread_id + 1) * sliceSize, expvers.size());
+    std::cerr << "Slice size is: " << sliceSize << " thread id = " << thread_id << " startIdx = " << startIdx << " endIdx " << endIdx << std::endl;
+
+    // Assign elements to the slice
+    std::vector<std::string> slice;
+    slice.assign(expvers.begin() + startIdx, expvers.begin() + endIdx);
+
+
 
     const char* buffer = nullptr;
     size_t size = 0;
@@ -181,7 +185,7 @@ void FDBWrite::executeWriteInternal(const eckit::option::CmdArgs &args, int id, 
     size_t bytesWritten = 0;
 
     timer.start();
-    for (const std::string& expver : half) {  
+    for (const std::string& expver : slice) {  
     // for (const std::string& expver : expvers) {
         size = expver.length();
         mtx.lock();
@@ -397,7 +401,7 @@ void FDBWrite::executeList(const eckit::option::CmdArgs &args) {
 //----------------------------------------------------------------------------------------------------------------------
 
 int main(int argc, char **argv) {
-    FDBWrite app(argc, argv, 0);
+    FDBWrite app(argc, argv);
     return app.start();
 }
 
