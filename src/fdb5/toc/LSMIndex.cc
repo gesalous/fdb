@@ -38,7 +38,7 @@
 #define PARALLAX_VOL_CONNECTOR_VALUE ((H5VL_class_value_t)12202)
 #define PARALLAX_VOL_CONNECTOR_NAME "parallax_vol_connector"
 #define PARALLAX_VOL_CONNECTOR_NAME_SIZE 128
-
+#define PARALLAX_NUM_KEYS 4
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -179,7 +179,7 @@ public:
     }
 
     bool get(const ::std::string& key, FieldRef& data) const {
-        LSM_FATAL("Unsupported operation");
+        LSM_DEBUG("Unsupported operation");
         const char* error_msg = NULL;
         const char* key_str   = key.c_str();
         struct par_key parallax_key;
@@ -200,7 +200,7 @@ public:
     }
 
     bool set(const std::string& key, const FieldRef& data) {
-        //LSM_DEBUG("LSM set operation. %s for index_id: %lu", key.c_str(),index_id);
+        // LSM_DEBUG("LSM set operation. %s for index_id: %lu", key.c_str(),index_id);
         // fdb5::ParallaxSerDes<32> serializer;
         // eckit::DumpLoad& baseRef      = serializer;
         // FieldRefLocation::UriID uriId = data.uriId();
@@ -266,8 +266,8 @@ public:
     void funlock() {
         LSM_DEBUG("LSM funlock operation.");
     }
-
     void visit(BTreeIndexVisitor& visitor) const {
+        uint64_t keys_touched = 0;
         // LSM_DEBUG("Searching staff index_id: %lu",index_id); 
         struct par_key start = {.size = sizeof(index_id), .data = (char *)&index_id};
         const char* error    = nullptr;
@@ -292,6 +292,8 @@ public:
             // Make a copy of the FieldRef object
             FieldRef fieldRefCopy = *fieldRefPtr;
             visitor.visit(key, fieldRefCopy);
+            if (++keys_touched == PARALLAX_NUM_KEYS)
+                break;
             par_get_next(scanner);
         }
         par_close_scanner(scanner);
