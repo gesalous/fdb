@@ -145,7 +145,7 @@ public:
         if (file.good() == false)
             std::ofstream outfile(path.asString());
         index_id = std::hash<std::string>{}(path.asString());
-        std::cerr << "Index name is " << path.asString() << " unique index_id: " << index_id << "\n" << std::endl;
+        // std::cerr << "Index name is " << path.asString() << " unique index_id: " << index_id << "\n" << std::endl;
         if (parallax_handle)
             return;
 
@@ -170,8 +170,8 @@ public:
         if (parallax_handle == NULL && error_message)
             LSM_FATAL("Error uppon opening the DB, error %s", error_message);
         parallax_store.setParallaxVolume(path.asString(), parallax_handle);
-        std::cerr << "OK for Index  " << path.asString() << " unique index_id: " << index_id << "\n"
-                  << std::endl;
+        // std::cerr << "OK for Index  " << path.asString() << " unique index_id: " << index_id << "\n"
+        //           << std::endl;
     }
 
     ~LSMIndex() {
