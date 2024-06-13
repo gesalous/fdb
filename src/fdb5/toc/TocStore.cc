@@ -61,8 +61,8 @@ std::unique_ptr<FieldLocation> TocStore::archive(const Key& key, const void* dat
 
     eckit::Offset position = dh.position();
     // gesalous hack
-    //long len = length;
-    long len = dh.write(data, length);
+    long len = length;
+    //long len = dh.write(data, length);
 
     ASSERT(len == length);
 
