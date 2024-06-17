@@ -22,17 +22,17 @@ namespace fdb5 {
 //----------------------------------------------------------------------------------------------------------------------
 
 ParallaxCatalogueReader::ParallaxCatalogueReader(const Key& key, const fdb5::Config& config) :
-    TocCatalogue(key, config) {
+    ParallaxCatalogue(key, config) {
     loadIndexesAndRemap();
 }
 
 ParallaxCatalogueReader::ParallaxCatalogueReader(const eckit::URI& uri, const fdb5::Config& config) :
-    TocCatalogue(uri.path(), ControlIdentifiers{}, config) {
+    ParallaxCatalogue(uri.path(), ControlIdentifiers{}, config) {
     loadIndexesAndRemap();
 }
 
 ParallaxCatalogueReader::~ParallaxCatalogueReader() {
-    LOG_DEBUG_LIB(LibFdb5) << "Closing DB " << *dynamic_cast<TocCatalogue*>(this) << std::endl;
+    LOG_DEBUG_LIB(LibFdb5) << "Closing DB " << *dynamic_cast<ParallaxCatalogue*>(this) << std::endl;
 }
 
 void ParallaxCatalogueReader::loadIndexesAndRemap() {
@@ -77,11 +77,11 @@ bool ParallaxCatalogueReader::open() {
     // if it has been created with fdb-root --create.
     // See MARS-
 
-    if (!TocCatalogue::exists()) {
+    if (!ParallaxCatalogue::exists()) {
         return false;
     }
 
-    TocCatalogue::loadSchema();
+    ParallaxCatalogue::loadSchema();
     return true;
 }
 

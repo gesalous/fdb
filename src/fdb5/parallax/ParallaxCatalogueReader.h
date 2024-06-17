@@ -15,15 +15,15 @@
 #ifndef fdb5_ParallaxCatalogueReader_H
 #define fdb5_ParallaxCatalogueReader_H
 
-#include "fdb5/toc/TocCatalogue.h"
+#include "fdb5/parallax/ParallaxCatalogue.h"
 
 namespace fdb5 {
 
 //----------------------------------------------------------------------------------------------------------------------
 
-/// DB that implements the FDB on POSIX filesystems
+/// DB that implements the FDB on Parallax
 
-class ParallaxCatalogueReader : public TocCatalogue, public CatalogueReader {
+class ParallaxCatalogueReader : public ParallaxCatalogue, public CatalogueReader {
 
 public: // methods
 

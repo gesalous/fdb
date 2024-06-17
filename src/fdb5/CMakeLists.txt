@@ -296,10 +296,22 @@ if( HAVE_TOCFDB )
         toc/TocStore.h
         toc/TocEngine.cc
         toc/TocEngine.h
+        parallax/ParallaxCatalogue.cc
+        parallax/ParallaxCatalogue.h
         parallax/ParallaxCatalogueWriter.cc
         parallax/ParallaxCatalogueWriter.h
         parallax/ParallaxCatalogueReader.cc
         parallax/ParallaxCatalogueReader.h
+        parallax/ParallaxCommon.cc
+        parallax/ParallaxCommon.h
+        parallax/ParallaxEngine.cc
+        parallax/ParallaxEngine.h
+        parallax/ParallaxFieldLocation.cc
+        parallax/ParallaxFieldLocation.h
+        parallax/ParallaxFileHandler.cc
+        parallax/ParallaxFileHandler.h
+        parallax/ParallaxStore.cc
+        parallax/ParallaxStore.h
         )
 
     list( APPEND fdb5_tools

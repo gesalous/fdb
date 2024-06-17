@@ -20,7 +20,7 @@
 #include "fdb5/database/Index.h"
 #include "fdb5/toc/TocRecord.h"
 
-#include "fdb5/toc/TocCatalogue.h"
+#include "fdb5/parallax/ParallaxCatalogue.h"
 #include "fdb5/toc/TocSerialisationVersion.h"
 
 namespace fdb5 {
@@ -32,7 +32,7 @@ class TocAddIndex;
 
 /// DB that implements the FDB on Parallax KV store
 
-class ParallaxCatalogueWriter : public TocCatalogue, public CatalogueWriter {
+class ParallaxCatalogueWriter : public ParallaxCatalogue, public CatalogueWriter {
 
 public: // methods
 

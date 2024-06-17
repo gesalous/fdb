@@ -19,7 +19,7 @@
 #include "fdb5/io/FDBFileHandle.h"
 #include "fdb5/LibFdb5.h"
 #include "fdb5/parallax/ParallaxCatalogueWriter.h"
-#include "fdb5/toc/TocFieldLocation.h"
+#include "fdb5/parallax/ParallaxFieldLocation.h"
 #include "fdb5/toc/TocIndex.h"
 #include "fdb5/io/LustreSettings.h"
 
@@ -30,19 +30,19 @@ namespace fdb5 {
 //----------------------------------------------------------------------------------------------------------------------
 
 ParallaxCatalogueWriter::ParallaxCatalogueWriter(const Key &key, const fdb5::Config& config) :
-    TocCatalogue(key, config),
+    ParallaxCatalogue(key, config),
     umask_(config.umask()) {
     writeInitRecord(key);
-    TocCatalogue::loadSchema();
-    TocCatalogue::checkUID();
+    ParallaxCatalogue::loadSchema();
+    ParallaxCatalogue::checkUID();
 }
 
 ParallaxCatalogueWriter::ParallaxCatalogueWriter(const eckit::URI &uri, const fdb5::Config& config) :
-    TocCatalogue(uri.path(), ControlIdentifiers{}, config),
+    ParallaxCatalogue(uri.path(), ControlIdentifiers{}, config),
     umask_(config.umask()) {
-    writeInitRecord(TocCatalogue::key());
-    TocCatalogue::loadSchema();
-    TocCatalogue::checkUID();
+    writeInitRecord(ParallaxCatalogue::key());
+    ParallaxCatalogue::loadSchema();
+    ParallaxCatalogue::checkUID();
 }
 
 ParallaxCatalogueWriter::~ParallaxCatalogueWriter() {
@@ -128,7 +128,7 @@ void ParallaxCatalogueWriter::index(const Key &key, const eckit::URI &uri, eckit
         selectIndex(currentIndexKey_);
     }
 
-    Field field(TocFieldLocation(uri, offset, length, Key()), currentIndex().timestamp());
+    Field field(ParallaxFieldLocation(uri, offset, length, Key()), currentIndex().timestamp());
 
     current_.put(key, field);
 
@@ -153,7 +153,7 @@ void ParallaxCatalogueWriter::reconsolidateIndexesAndTocs() {
         void visitDatum(const Field& field, const Key& key) override {
             // TODO: Do a sneaky schema.expand() here, prepopulated with the current DB/index/Rule,
             //       to extract the full key, including optional values.
-            const TocFieldLocation& location(static_cast<const TocFieldLocation&>(field.location()));
+            const ParallaxFieldLocation& location(static_cast<const ParallaxFieldLocation&>(field.location()));
             writer_.index(key, location.uri(), location.offset(), location.length());
 
         }
@@ -232,30 +232,30 @@ const TocSerialisationVersion& ParallaxCatalogueWriter::serialisationVersion() c
 
 void ParallaxCatalogueWriter::overlayDB(const Catalogue& otherCat, const std::set<std::string>& variableKeys, bool unmount) {
 
-    const TocCatalogue& otherCatalogue = dynamic_cast<const TocCatalogue&>(otherCat);
+    const ParallaxCatalogue& otherCatalogue = dynamic_cast<const ParallaxCatalogue&>(otherCat);
     const Key& otherKey(otherCatalogue.key());
 
-    if (otherKey.size() != TocCatalogue::dbKey_.size()) {
+    if (otherKey.size() != ParallaxCatalogue::dbKey_.size()) {
         std::stringstream ss;
-        ss << "Keys insufficiently matching for mount: " << TocCatalogue::dbKey_ << " : " << otherKey;
+        ss << "Keys insufficiently matching for mount: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
         throw UserError(ss.str(), Here());
     }
 
     // Build the difference map from the old to the new key
 
-    for (const auto& kv : TocCatalogue::dbKey_) {
+    for (const auto& kv : ParallaxCatalogue::dbKey_) {
 
         auto it = otherKey.find(kv.first);
         if (it == otherKey.end()) {
             std::stringstream ss;
-            ss << "Keys insufficiently matching for mount: " << TocCatalogue::dbKey_ << " : " << otherKey;
+            ss << "Keys insufficiently matching for mount: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
             throw UserError(ss.str(), Here());
         }
 
         if (kv.second != it->second) {
             if (variableKeys.find(kv.first) == variableKeys.end()) {
                 std::stringstream ss;
-                ss << "Key " << kv.first << " not allowed to differ between DBs: " << TocCatalogue::dbKey_ << " : " << otherKey;
+                ss << "Key " << kv.first << " not allowed to differ between DBs: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
                 throw UserError(ss.str(), Here());
             }
         }
@@ -290,7 +290,7 @@ bool ParallaxCatalogueWriter::enabled(const ControlIdentifier& controlIdentifier
     if (controlIdentifier == ControlIdentifier::List || controlIdentifier == ControlIdentifier::Retrieve) {
         return false;
     }
-    return TocCatalogue::enabled(controlIdentifier);
+    return ParallaxCatalogue::enabled(controlIdentifier);
 }
 
 void ParallaxCatalogueWriter::archive(const Key& key, std::unique_ptr<FieldLocation> fieldLocation) {
