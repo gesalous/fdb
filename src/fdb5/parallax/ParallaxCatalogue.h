@@ -21,7 +21,10 @@
 #include "fdb5/rules/Schema.h"
 #include "fdb5/toc/FileSpace.h"
 #include "fdb5/toc/TocHandler.h"
-#include "fdb5/toc/TocEngine.h"
+#include "fdb5/parallax/ParallaxEngine.h"
+#include <shared_mutex>
+#include "parallax.h"
+#include "structures.h"
 
 namespace fdb5 {
 
@@ -38,14 +41,14 @@ public: // methods
 
     ~ParallaxCatalogue() override {}
 
-    static const char* catalogueTypeName() { return TocEngine::typeName(); }
+    static const char* catalogueTypeName() { return ParallaxEngine::typeName(); }
     const eckit::PathName& basePath() const override;
     eckit::URI uri() const override;
     const Key& indexKey() const override { return currentIndexKey_; }
 
     static void remove(const eckit::PathName& path, std::ostream& logAlways, std::ostream& logVerbose, bool doit);
 
-    bool enabled(const ControlIdentifier& controlIdentifier) const override;
+    //bool enabled(const ControlIdentifier& controlIdentifier) const override;
 
 public: // constants
     static const std::string DUMP_PARAM_WALKSUBTOC;
@@ -56,7 +59,7 @@ protected: // methods
 
     std::string type() const override;
 
-    void checkUID() const override;
+    void checkUID() const override { NOTIMP; };
     bool exists() const override;
     void visitEntries(EntryVisitor& visitor, const Store& store, bool sorted) override;
     void dump(std::ostream& out, bool simple, const eckit::Configuration& conf) const override;
@@ -82,6 +85,8 @@ protected: // methods
 protected: // members
 
     Key currentIndexKey_;
+    size_t schema_size;
+    par_handle parallax_handle;
 
 private: // members
 
@@ -89,7 +94,7 @@ private: // members
     friend class TocMoveVisitor;
 
     // non-owning
-    const Schema* schema_;
+    Schema schema_;
 };
 
 //----------------------------------------------------------------------------------------------------------------------

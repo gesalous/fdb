@@ -41,20 +41,23 @@ ParallaxStore::ParallaxStore(const Schema& schema, const eckit::URI& uri, const 
     Store(schema), ParallaxCommon(uri.path().dirName()) {}
 
 eckit::URI ParallaxStore::uri() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return URI("file", directory_);
 }
 
 bool ParallaxStore::exists() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return directory_.exists();
 }
 
 eckit::DataHandle* ParallaxStore::retrieve(Field& field) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return field.dataHandle();
 }
 
 std::unique_ptr<FieldLocation> ParallaxStore::archive(const Key& key, const void* data, eckit::Length length) {
     dirty_ = true;
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     eckit::PathName dataPath = getDataPath(key);
 
     eckit::DataHandle& dh = getDataHandle(dataPath);
@@ -71,6 +74,7 @@ std::unique_ptr<FieldLocation> ParallaxStore::archive(const Key& key, const void
 
 
 void ParallaxStore::flush() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     // gesalous
     // std::cout << "File: " << __FILE__
     //           << ", Function: " << __func__
@@ -87,10 +91,12 @@ void ParallaxStore::flush() {
 }
 
 void ParallaxStore::close() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     closeDataHandles();
 }
 
 void ParallaxStore::remove(const eckit::URI& uri, std::ostream& logAlways, std::ostream& logVerbose, bool doit) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(uri.scheme() == type());
 
     eckit::PathName path = uri.path();
@@ -109,6 +115,7 @@ void ParallaxStore::remove(const eckit::URI& uri, std::ostream& logAlways, std::
 }
 
 eckit::DataHandle* ParallaxStore::getCachedHandle(const eckit::PathName& path) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     HandleStore::const_iterator j = handles_.find(path);
     if (j != handles_.end())
         return j->second;
@@ -117,6 +124,7 @@ eckit::DataHandle* ParallaxStore::getCachedHandle(const eckit::PathName& path) c
 }
 
 void ParallaxStore::closeDataHandles() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     for (HandleStore::iterator j = handles_.begin(); j != handles_.end(); ++j) {
         eckit::DataHandle* dh = j->second;
         dh->close();
@@ -126,7 +134,7 @@ void ParallaxStore::closeDataHandles() {
 }
 
 eckit::DataHandle* ParallaxStore::createFileHandle(const eckit::PathName& path) {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     static size_t sizeBuffer = eckit::Resource<unsigned long>("fdbBufferSize", 64 * 1024 * 1024);
 
     if (stripeLustre()) {
@@ -146,7 +154,7 @@ eckit::DataHandle* ParallaxStore::createFileHandle(const eckit::PathName& path) 
 }
 
 eckit::DataHandle* ParallaxStore::createAsyncHandle(const eckit::PathName& path) {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     static size_t nbBuffers  = eckit::Resource<unsigned long>("fdbNbAsyncBuffers", 4);
     static size_t sizeBuffer = eckit::Resource<unsigned long>("fdbSizeAsyncBuffer", 64 * 1024 * 1024);
 
@@ -164,7 +172,7 @@ eckit::DataHandle* ParallaxStore::createAsyncHandle(const eckit::PathName& path)
 }
 
 eckit::DataHandle* ParallaxStore::createDataHandle(const eckit::PathName& path) {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     static bool fdbWriteToNull = eckit::Resource<bool>("fdbWriteToNull;$FDB_WRITE_TO_NULL", false);
     if (fdbWriteToNull)
         return new eckit::EmptyHandle();
@@ -177,6 +185,7 @@ eckit::DataHandle* ParallaxStore::createDataHandle(const eckit::PathName& path) 
 }
 
 eckit::DataHandle& ParallaxStore::getDataHandle(const eckit::PathName& path) {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     eckit::DataHandle* dh = getCachedHandle(path);
     if (!dh) {
         dh = createDataHandle(path);
@@ -188,7 +197,7 @@ eckit::DataHandle& ParallaxStore::getDataHandle(const eckit::PathName& path) {
 }
 
 eckit::PathName ParallaxStore::generateDataPath(const Key& key) const {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     eckit::PathName dpath(directory_);
     dpath /= key.valuesToString();
     dpath = eckit::PathName::unique(dpath) + ".data";
@@ -196,6 +205,7 @@ eckit::PathName ParallaxStore::generateDataPath(const Key& key) const {
 }
 
 eckit::PathName ParallaxStore::getDataPath(const Key& key) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     PathStore::const_iterator j = dataPaths_.find(key);
     if (j != dataPaths_.end())
         return j->second;
@@ -208,7 +218,7 @@ eckit::PathName ParallaxStore::getDataPath(const Key& key) const {
 }
 
 void ParallaxStore::flushDataHandles() {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     for (HandleStore::iterator j = handles_.begin(); j != handles_.end(); ++j) {
         eckit::DataHandle* dh = j->second;
         dh->flush();
@@ -216,6 +226,7 @@ void ParallaxStore::flushDataHandles() {
 }
 
 bool ParallaxStore::canMoveTo(const Key& key, const Config& config, const eckit::URI& dest) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     if (dest.scheme().empty() || dest.scheme() == "toc" || dest.scheme() == "file" || dest.scheme() == "unix") {
         eckit::PathName destPath = dest.path();
         for (const eckit::PathName& root : StoreRootManager(config).canMoveToRoots(key)) {
@@ -240,6 +251,7 @@ bool ParallaxStore::canMoveTo(const Key& key, const Config& config, const eckit:
 // }
 
 void ParallaxStore::moveTo(const Key& key, const Config& config, const eckit::URI& dest, eckit::Queue<MoveElement>& queue) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     eckit::PathName destPath = dest.path();
     for (const eckit::PathName& root : StoreRootManager(config).canMoveToRoots(key)) {
         if (root.sameAs(destPath)) {
@@ -268,7 +280,7 @@ void ParallaxStore::moveTo(const Key& key, const Config& config, const eckit::UR
 }
 
 void ParallaxStore::remove(const Key& key) const {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     eckit::PathName src_db = directory_ / key.valuesToString();
 
     DIR* dirp = ::opendir(src_db.asString().c_str());
@@ -284,6 +296,7 @@ void ParallaxStore::remove(const Key& key) const {
 }
 
 void ParallaxStore::print(std::ostream& out) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     out << "ParallaxStore(" << directory_ << ")";
 }
 

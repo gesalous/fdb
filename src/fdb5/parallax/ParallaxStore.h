@@ -44,7 +44,7 @@ public: // methods
     void flush() override;
     void close() override;
 
-    void checkUID() const override { ParallaxCommon::checkUID(); }
+    void checkUID() const override { /*ParallaxCommon::checkUID();*/ }
 
     bool canMoveTo(const Key& key, const Config& config, const eckit::URI& dest) const override;
     void moveTo(const Key& key, const Config& config, const eckit::URI& dest, eckit::Queue<MoveElement>& queue) const override;

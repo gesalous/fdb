@@ -27,19 +27,103 @@ using namespace eckit;
 
 namespace fdb5 {
 
+#define LSM_DEBUG(...)                                                       \
+    do {                                                                     \
+        char buffer[1024];                                                   \
+        snprintf(buffer, sizeof(buffer), __VA_ARGS__);                       \
+        ::std::cout << __FILE__ << ":" << __func__ << ":" << __LINE__ << " " \
+                    << " DEBUG: " << buffer << ::std::endl;                  \
+    } while (0);
+
+
+#define LSM_FATAL(...)                                                \
+    do {                                                              \
+        char buffer[1024];                                            \
+        snprintf(buffer, sizeof(buffer), __VA_ARGS__);                \
+        ::std::cout << __FILE__ << ":" << __func__ << ":" << __LINE__ \
+                    << " FATAL: " << buffer << ::std::endl;           \
+        _exit(EXIT_FAILURE);                                          \
+    } while (0);
+
 //----------------------------------------------------------------------------------------------------------------------
 
 ParallaxCatalogueWriter::ParallaxCatalogueWriter(const Key &key, const fdb5::Config& config) :
-    ParallaxCatalogue(key, config),
-    umask_(config.umask()) {
-    writeInitRecord(key);
+    ParallaxCatalogue(key, config)
+    //, umask_(config.umask()) 
+    {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    
+    const char* volume_name = getenv(PARALLAX_VOLUME_ENV_VAR);;
+    std::string dbName = PARALLAX_GLOBAL_DB;
+
+    par_db_options db_options               = {.volume_name = (char*)volume_name,
+                                                .db_name     = dbName.c_str(),
+                                                .create_flag = PAR_CREATE_DB,
+                                                .options     = par_get_default_options()};
+    db_options.options[LEVEL0_SIZE].value   = PARALLAX_L0_SIZE;
+    db_options.options[GROWTH_FACTOR].value = PARALLAX_GROWTH_FACTOR;
+    db_options.options[PRIMARY_MODE].value  = 1;
+    db_options.options[ENABLE_BLOOM_FILTERS].value  = 1;
+
+    const char* error_message = NULL;
+
+    parallax_handle = par_open(&db_options, &error_message);
+    if (error_message)
+        LSM_DEBUG("Parallax says: %s", error_message);
+
+    if (parallax_handle == NULL && error_message)
+        LSM_FATAL("Error uppon opening the DB, error %s", error_message);
+    const eckit::PathName& path = config.schemaPath();
+    std::cout << "schema path: " << path << std::endl;
+
+
+    std::stringstream schema_buffer;
+    std::ifstream file(path.asString());
+    if (file.is_open()) {
+        schema_buffer << file.rdbuf();
+        file.close();
+    } else {
+        std::cout << "Error opening file: " << path << std::endl;
+        _exit(EXIT_FAILURE);
+    }
+    const char* error_msg = NULL;
+    par_key_value schema_kv;
+    const char* key_str = "schema";
+    
+    schema_kv.k.size = strlen(key_str);
+    schema_kv.k.data = key_str;
+
+    std::string schema_str = schema_buffer.str();
+    // std::cout << "buffer size: " << schema_buffer.str().size() << std::endl;
+    // std::cout << "buffer: " << schema_buffer.str() << std::endl;
+
+    schema_kv.v.val_size = schema_str.size();
+    schema_kv.v.val_buffer = const_cast<char*>(schema_str.c_str());
+
+    eckit::Log::debug<LibFdb5>() << "Copy schema from "
+                                     << config_.schemaPath()
+                                     << " to "
+                                     << volume_name
+                                     << " at key 'schema'."
+                                     << std::endl;
+
+    par_put(this->parallax_handle, &schema_kv, &error_msg);
+    if (error_msg) {
+        std::cout << "Sorry Parallax put failed reason: " << error_msg << std ::endl;
+        _exit(EXIT_FAILURE);
+    }
+    schema_size = schema_kv.v.val_size;
+
+    //writeInitRecord(key);
     ParallaxCatalogue::loadSchema();
-    ParallaxCatalogue::checkUID();
+    //ParallaxCatalogue::checkUID();
 }
 
 ParallaxCatalogueWriter::ParallaxCatalogueWriter(const eckit::URI &uri, const fdb5::Config& config) :
-    ParallaxCatalogue(uri.path(), ControlIdentifiers{}, config),
-    umask_(config.umask()) {
+    ParallaxCatalogue(uri.path(), ControlIdentifiers{}, config)
+    //, umask_(config.umask()) 
+    {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     writeInitRecord(ParallaxCatalogue::key());
     ParallaxCatalogue::loadSchema();
     ParallaxCatalogue::checkUID();
@@ -51,6 +135,7 @@ ParallaxCatalogueWriter::~ParallaxCatalogueWriter() {
 }
 
 bool ParallaxCatalogueWriter::selectIndex(const Key& key) {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     currentIndexKey_ = key;
 
     if (indexes_.find(key) == indexes_.end()) {
@@ -95,129 +180,131 @@ bool ParallaxCatalogueWriter::selectIndex(const Key& key) {
 }
 
 void ParallaxCatalogueWriter::deselectIndex() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     current_ = Index();
     currentFull_ = Index();
     currentIndexKey_ = Key();
 }
 
 bool ParallaxCatalogueWriter::open() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return true;
 }
 
 void ParallaxCatalogueWriter::clean() {
-
-    LOG_DEBUG_LIB(LibFdb5) << "Closing path " << directory_ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    //LOG_DEBUG_LIB(LibFdb5) << "Closing path " << directory_ << std::endl;
 
     flush(); // closes the TOC entries & indexes but not data files
 
-    compactSubTocIndexes();
+    //compactSubTocIndexes();
 
     deselectIndex();
 }
 
 void ParallaxCatalogueWriter::close() {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     closeIndexes();
 }
 
-void ParallaxCatalogueWriter::index(const Key &key, const eckit::URI &uri, eckit::Offset offset, eckit::Length length) {
-    dirty_ = true;
+// void ParallaxCatalogueWriter::index(const Key &key, const eckit::URI &uri, eckit::Offset offset, eckit::Length length) {
+//     dirty_ = true;
+//     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+//     if (current_.null()) {
+//         ASSERT(!currentIndexKey_.empty());
+//         selectIndex(currentIndexKey_);
+//     }
 
-    if (current_.null()) {
-        ASSERT(!currentIndexKey_.empty());
-        selectIndex(currentIndexKey_);
-    }
+//     Field field(ParallaxFieldLocation(uri, offset, length, Key()), currentIndex().timestamp());
 
-    Field field(ParallaxFieldLocation(uri, offset, length, Key()), currentIndex().timestamp());
+//     current_.put(key, field);
 
-    current_.put(key, field);
+//     if (useSubToc())
+//         currentFull_.put(key, field);
+// }
 
-    if (useSubToc())
-        currentFull_.put(key, field);
-}
+// void ParallaxCatalogueWriter::reconsolidateIndexesAndTocs() {
+//     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+//     // TODO: This tool needs to be rewritten to reindex properly using the schema.
+//     //       Currently it results in incomplete indexes if data has been written
+//     //       in a context that has optional values in the schema.
 
-void ParallaxCatalogueWriter::reconsolidateIndexesAndTocs() {
+//     // Visitor class for reindexing
 
-    // TODO: This tool needs to be rewritten to reindex properly using the schema.
-    //       Currently it results in incomplete indexes if data has been written
-    //       in a context that has optional values in the schema.
+//     class ConsolidateIndexVisitor : public EntryVisitor {
+//     public:
+//         ConsolidateIndexVisitor(ParallaxCatalogueWriter& writer) :
+//             writer_(writer) {}
+//         ~ConsolidateIndexVisitor() override {}
+//     private:
+//         void visitDatum(const Field& field, const Key& key) override {
+//             // TODO: Do a sneaky schema.expand() here, prepopulated with the current DB/index/Rule,
+//             //       to extract the full key, including optional values.
+//             const ParallaxFieldLocation& location(static_cast<const ParallaxFieldLocation&>(field.location()));
+//             writer_.index(key, location.uri(), location.offset(), location.length());
 
-    // Visitor class for reindexing
+//         }
+//         void visitDatum(const Field& field, const std::string& keyFingerprint) override {
+//             EntryVisitor::visitDatum(field, keyFingerprint);
+//         }
 
-    class ConsolidateIndexVisitor : public EntryVisitor {
-    public:
-        ConsolidateIndexVisitor(ParallaxCatalogueWriter& writer) :
-            writer_(writer) {}
-        ~ConsolidateIndexVisitor() override {}
-    private:
-        void visitDatum(const Field& field, const Key& key) override {
-            // TODO: Do a sneaky schema.expand() here, prepopulated with the current DB/index/Rule,
-            //       to extract the full key, including optional values.
-            const ParallaxFieldLocation& location(static_cast<const ParallaxFieldLocation&>(field.location()));
-            writer_.index(key, location.uri(), location.offset(), location.length());
+//         ParallaxCatalogueWriter& writer_;
+//     };
 
-        }
-        void visitDatum(const Field& field, const std::string& keyFingerprint) override {
-            EntryVisitor::visitDatum(field, keyFingerprint);
-        }
+//     // Visit all tocs and indexes
 
-        ParallaxCatalogueWriter& writer_;
-    };
+//     std::set<std::string> subtocs;
+//     std::vector<bool> indexInSubtoc;
+//     std::vector<Index> readIndexes = loadIndexes(false, &subtocs, &indexInSubtoc);
+//     size_t maskable_indexes = 0;
 
-    // Visit all tocs and indexes
+//     ConsolidateIndexVisitor visitor(*this);
 
-    std::set<std::string> subtocs;
-    std::vector<bool> indexInSubtoc;
-    std::vector<Index> readIndexes = loadIndexes(false, &subtocs, &indexInSubtoc);
-    size_t maskable_indexes = 0;
+//     ASSERT(readIndexes.size() == indexInSubtoc.size());
 
-    ConsolidateIndexVisitor visitor(*this);
+//     for (size_t i = 0; i < readIndexes.size(); i++) {
+//         Index& idx(readIndexes[i]);
+//         selectIndex(idx.key());
+//         idx.entries(visitor);
 
-    ASSERT(readIndexes.size() == indexInSubtoc.size());
+//         Log::info() << "Visiting index: " << idx.location().uri() << std::endl;
 
-    for (size_t i = 0; i < readIndexes.size(); i++) {
-        Index& idx(readIndexes[i]);
-        selectIndex(idx.key());
-        idx.entries(visitor);
+//         // We need to explicitly mask indexes in the master TOC
+//         if (!indexInSubtoc[i]) maskable_indexes += 1;
+//     }
 
-        Log::info() << "Visiting index: " << idx.location().uri() << std::endl;
+//     // Flush the new indexes and add relevant entries!
+//     clean();
+//     close();
 
-        // We need to explicitly mask indexes in the master TOC
-        if (!indexInSubtoc[i]) maskable_indexes += 1;
-    }
+//     // Add masking entries for all the indexes and subtocs visited so far
 
-    // Flush the new indexes and add relevant entries!
-    clean();
-    close();
+//     Buffer buf(sizeof(TocRecord) * (subtocs.size() + maskable_indexes));
+//     size_t combinedSize = 0;
 
-    // Add masking entries for all the indexes and subtocs visited so far
+//     for (size_t i = 0; i < readIndexes.size(); i++) {
+//         // We need to explicitly mask indexes in the master TOC
+//         if (!indexInSubtoc[i]) {
+//             Index& idx(readIndexes[i]);
+//             TocRecord* r = new (&buf[combinedSize]) TocRecord(serialisationVersion().used(), TocRecord::TOC_CLEAR);
+//             combinedSize += roundRecord(*r, buildClearRecord(*r, idx));
+//             Log::info() << "Masking index: " << idx.location().uri() << std::endl;
+//         }
+//     }
 
-    Buffer buf(sizeof(TocRecord) * (subtocs.size() + maskable_indexes));
-    size_t combinedSize = 0;
+//     for (const std::string& subtoc_path : subtocs) {
+//         TocRecord* r = new (&buf[combinedSize]) TocRecord(serialisationVersion().used(), TocRecord::TOC_CLEAR);
+//         combinedSize += roundRecord(*r, buildSubTocMaskRecord(*r, subtoc_path));
+//         Log::info() << "Masking sub-toc: " << subtoc_path << std::endl;
+//     }
 
-    for (size_t i = 0; i < readIndexes.size(); i++) {
-        // We need to explicitly mask indexes in the master TOC
-        if (!indexInSubtoc[i]) {
-            Index& idx(readIndexes[i]);
-            TocRecord* r = new (&buf[combinedSize]) TocRecord(serialisationVersion().used(), TocRecord::TOC_CLEAR);
-            combinedSize += roundRecord(*r, buildClearRecord(*r, idx));
-            Log::info() << "Masking index: " << idx.location().uri() << std::endl;
-        }
-    }
+//     // And write all the TOC records in one go!
 
-    for (const std::string& subtoc_path : subtocs) {
-        TocRecord* r = new (&buf[combinedSize]) TocRecord(serialisationVersion().used(), TocRecord::TOC_CLEAR);
-        combinedSize += roundRecord(*r, buildSubTocMaskRecord(*r, subtoc_path));
-        Log::info() << "Masking sub-toc: " << subtoc_path << std::endl;
-    }
-
-    // And write all the TOC records in one go!
-
-    appendBlock(buf, combinedSize);
-}
+//     appendBlock(buf, combinedSize);
+// }
 
 const Index& ParallaxCatalogueWriter::currentIndex() {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     if (current_.null()) {
         ASSERT(!currentIndexKey_.empty());
         selectIndex(currentIndexKey_);
@@ -226,74 +313,76 @@ const Index& ParallaxCatalogueWriter::currentIndex() {
     return current_;
 }
 
-const TocSerialisationVersion& ParallaxCatalogueWriter::serialisationVersion() const {
-    return TocHandler::serialisationVersion();
-}
+// const TocSerialisationVersion& ParallaxCatalogueWriter::serialisationVersion() const {
+//     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+//     return TocHandler::serialisationVersion();
+// }
 
-void ParallaxCatalogueWriter::overlayDB(const Catalogue& otherCat, const std::set<std::string>& variableKeys, bool unmount) {
+// void ParallaxCatalogueWriter::overlayDB(const Catalogue& otherCat, const std::set<std::string>& variableKeys, bool unmount) {
+//     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+//     const ParallaxCatalogue& otherCatalogue = dynamic_cast<const ParallaxCatalogue&>(otherCat);
+//     const Key& otherKey(otherCatalogue.key());
 
-    const ParallaxCatalogue& otherCatalogue = dynamic_cast<const ParallaxCatalogue&>(otherCat);
-    const Key& otherKey(otherCatalogue.key());
+//     if (otherKey.size() != ParallaxCatalogue::dbKey_.size()) {
+//         std::stringstream ss;
+//         ss << "Keys insufficiently matching for mount: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
+//         throw UserError(ss.str(), Here());
+//     }
 
-    if (otherKey.size() != ParallaxCatalogue::dbKey_.size()) {
-        std::stringstream ss;
-        ss << "Keys insufficiently matching for mount: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
-        throw UserError(ss.str(), Here());
-    }
+//     // Build the difference map from the old to the new key
 
-    // Build the difference map from the old to the new key
+//     for (const auto& kv : ParallaxCatalogue::dbKey_) {
 
-    for (const auto& kv : ParallaxCatalogue::dbKey_) {
+//         auto it = otherKey.find(kv.first);
+//         if (it == otherKey.end()) {
+//             std::stringstream ss;
+//             ss << "Keys insufficiently matching for mount: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
+//             throw UserError(ss.str(), Here());
+//         }
 
-        auto it = otherKey.find(kv.first);
-        if (it == otherKey.end()) {
-            std::stringstream ss;
-            ss << "Keys insufficiently matching for mount: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
-            throw UserError(ss.str(), Here());
-        }
+//         if (kv.second != it->second) {
+//             if (variableKeys.find(kv.first) == variableKeys.end()) {
+//                 std::stringstream ss;
+//                 ss << "Key " << kv.first << " not allowed to differ between DBs: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
+//                 throw UserError(ss.str(), Here());
+//             }
+//         }
+//     }
 
-        if (kv.second != it->second) {
-            if (variableKeys.find(kv.first) == variableKeys.end()) {
-                std::stringstream ss;
-                ss << "Key " << kv.first << " not allowed to differ between DBs: " << ParallaxCatalogue::dbKey_ << " : " << otherKey;
-                throw UserError(ss.str(), Here());
-            }
-        }
-    }
+//     // And append the mount link / unmount mask
+//     if (unmount) {
 
-    // And append the mount link / unmount mask
-    if (unmount) {
+//         // First sanity check that we are already mounted
 
-        // First sanity check that we are already mounted
+//         std::set<std::string> subtocs;
+//         loadIndexes(false, &subtocs);
 
-        std::set<std::string> subtocs;
-        loadIndexes(false, &subtocs);
+//         eckit::PathName stPath(otherCatalogue.tocPath());
+//         if (subtocs.find(stPath) == subtocs.end()) {
+//             std::stringstream ss;
+//             ss << "Cannot unmount DB: " << otherCatalogue << ". Not currently mounted";
+//             throw UserError(ss.str(), Here());
+//         }
 
-        eckit::PathName stPath(otherCatalogue.tocPath());
-        if (subtocs.find(stPath) == subtocs.end()) {
-            std::stringstream ss;
-            ss << "Cannot unmount DB: " << otherCatalogue << ". Not currently mounted";
-            throw UserError(ss.str(), Here());
-        }
+//         writeSubTocMaskRecord(otherCatalogue);
+//     } else {
+//         writeSubTocRecord(otherCatalogue);
+//     }
+// }
 
-        writeSubTocMaskRecord(otherCatalogue);
-    } else {
-        writeSubTocRecord(otherCatalogue);
-    }
-}
+// void ParallaxCatalogueWriter::hideContents() {
+//     writeClearAllRecord();
+// }
 
-void ParallaxCatalogueWriter::hideContents() {
-    writeClearAllRecord();
-}
-
-bool ParallaxCatalogueWriter::enabled(const ControlIdentifier& controlIdentifier) const {
-    if (controlIdentifier == ControlIdentifier::List || controlIdentifier == ControlIdentifier::Retrieve) {
-        return false;
-    }
-    return ParallaxCatalogue::enabled(controlIdentifier);
-}
+// bool ParallaxCatalogueWriter::enabled(const ControlIdentifier& controlIdentifier) const {
+//     if (controlIdentifier == ControlIdentifier::List || controlIdentifier == ControlIdentifier::Retrieve) {
+//         return false;
+//     }
+//     return ParallaxCatalogue::enabled(controlIdentifier);
+// }
 
 void ParallaxCatalogueWriter::archive(const Key& key, std::unique_ptr<FieldLocation> fieldLocation) {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     dirty_ = true;
 
     if (current_.null()) {
@@ -305,8 +394,8 @@ void ParallaxCatalogueWriter::archive(const Key& key, std::unique_ptr<FieldLocat
 
     current_.put(key, field);
 
-    if (useSubToc())
-        currentFull_.put(key, field);
+    // if (useSubToc())
+    //     currentFull_.put(key, field);
 }
 
 void ParallaxCatalogueWriter::flush() {
@@ -322,6 +411,7 @@ void ParallaxCatalogueWriter::flush() {
 }
 
 eckit::PathName ParallaxCatalogueWriter::generateIndexPath(const Key &key) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     eckit::PathName tocPath ( directory_ );
     tocPath /= key.valuesToString();
     tocPath = eckit::PathName::unique(tocPath) + ".index";
@@ -347,6 +437,7 @@ void ParallaxCatalogueWriter::flushIndexes() {
 
 
 void ParallaxCatalogueWriter::closeIndexes() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     for (IndexStore::iterator j = indexes_.begin(); j != indexes_.end(); ++j ) {
         Index& idx = j->second;
         idx.close();
@@ -362,7 +453,7 @@ void ParallaxCatalogueWriter::closeIndexes() {
 }
 
 void ParallaxCatalogueWriter::compactSubTocIndexes() {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     // In this routine, we write out indexes that correspond to all of the data in the
     // subtoc, written by this process. Then we append a masking entry.
 
@@ -399,6 +490,7 @@ void ParallaxCatalogueWriter::compactSubTocIndexes() {
 
 
 void ParallaxCatalogueWriter::print(std::ostream &out) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     out << "ParallaxCatalogueWriter(" << directory() << ")";
 }
 

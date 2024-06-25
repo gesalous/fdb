@@ -105,6 +105,7 @@ void FDBWrite::execute(const eckit::option::CmdArgs &args) {
 }
 
 void FDBWrite::executeWrite(const eckit::option::CmdArgs &args) {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
 
     eckit::AutoStdFile fin(args(0));
 
@@ -119,23 +120,15 @@ void FDBWrite::executeWrite(const eckit::option::CmdArgs &args) {
     size_t number = args.getLong("number", 1);
     size_t level = args.getLong("level", 1);
 
-    std::vector<std::string> expvers = {"yyyy", "xxxx", "wwww", "zzzz", 
-                                        "xyxy", "xwxw", "xzxz", "wzwz", 
-                                        "wzwx", "wzxw", "wzxx", "wzxy", 
-                                        "wzzy", "wzzz", "wzyy", "wzyz"};
 
     const char* buffer = nullptr;
     size_t size = 0;
 
     fdb5::MessageArchiver archiver(fdb5::Key(), false, verbose_, config(args));
 
-    /*std::string expver = args.getString("expver");
+    std::string expver = args.getString("expver");
     size = expver.length();
     CODES_CHECK(codes_set_string(handle, "expver", expver.c_str(), &size), 0);
-    std::string cls = args.getString("class");
-    size = cls.length();
-    CODES_CHECK(codes_set_string(handle, "class", cls.c_str(), &size), 0);*/
-
     std::string cls = args.getString("class");
     size = cls.length();
     CODES_CHECK(codes_set_string(handle, "class", cls.c_str(), &size), 0);
@@ -148,56 +141,55 @@ void FDBWrite::executeWrite(const eckit::option::CmdArgs &args) {
 
     timer.start();
 
-    for (const std::string& expver : expvers) {
-        size = expver.length();
-        CODES_CHECK(codes_set_string(handle, "expver", expver.c_str(), &size), 0);
-        for (size_t member = 1; member <= nensembles; ++member) {
-            if (args.has("nensembles")) {
-                CODES_CHECK(codes_set_long(handle, "number", member+number-1), 0);
-            }
-            for (size_t step = 0; step < nsteps; ++step) {
-                CODES_CHECK(codes_set_long(handle, "step", step), 0);
-                for (size_t lev = 1; lev <= nlevels; ++lev) {
-                    CODES_CHECK(codes_set_long(handle, "level", lev+level-1), 0);
-                    for (size_t param = 1, real_param = 1; param <= nparams; ++param, ++real_param) {
-                        // GRIB API only allows us to use certain parameters
-                        while (AWKWARD_PARAMS.find(real_param) != AWKWARD_PARAMS.end()) {
-                            real_param++;
-                        }
-                        Log::info() << "Member: " << member
-                                    << ", step: " << step
-                                    << ", level: " << level
-                                    << ", param: " << real_param << std::endl;
-
-                        CODES_CHECK(codes_set_long(handle, "paramId", real_param), 0);
-
-                        CODES_CHECK(codes_get_message(handle, reinterpret_cast<const void**>(&buffer), &size), 0);
-
-                        gribTimer.stop();
-                        elapsed_grib += gribTimer.elapsed();
-
-                        MemoryHandle dh(buffer, size);
-                        archiver.archive(dh);
-                        writeCount++;
-                        bytesWritten += size;
-
-                        gribTimer.start();
+    for (size_t member = 1; member <= nensembles; ++member) {
+        if (args.has("nensembles")) {
+            CODES_CHECK(codes_set_long(handle, "number", member+number-1), 0);
+        }
+        for (size_t step = 0; step < nsteps; ++step) {
+            CODES_CHECK(codes_set_long(handle, "step", step), 0);
+            for (size_t lev = 1; lev <= nlevels; ++lev) {
+                CODES_CHECK(codes_set_long(handle, "level", lev+level-1), 0);
+                for (size_t param = 1, real_param = 1; param <= nparams; ++param, ++real_param) {
+                    // GRIB API only allows us to use certain parameters
+                    while (AWKWARD_PARAMS.find(real_param) != AWKWARD_PARAMS.end()) {
+                        real_param++;
                     }
-                }
 
-                gribTimer.stop();
-                elapsed_grib += gribTimer.elapsed();
-                archiver.flush();
-                gribTimer.start();
+                    Log::info() << "Member: " << member
+                                << ", step: " << step
+                                << ", level: " << level
+                                << ", param: " << real_param << std::endl;
+
+                    CODES_CHECK(codes_set_long(handle, "paramId", real_param), 0);
+
+                    CODES_CHECK(codes_get_message(handle, reinterpret_cast<const void**>(&buffer), &size), 0);
+
+                    gribTimer.stop();
+                    elapsed_grib += gribTimer.elapsed();
+
+                    MemoryHandle dh(buffer, size);
+                    archiver.archive(dh);
+                    writeCount++;
+                    bytesWritten += size;
+
+                    gribTimer.start();
+                }
             }
+
+            gribTimer.stop();
+            elapsed_grib += gribTimer.elapsed();
+            //archiver.flush();
+            gribTimer.start();
         }
     }
+
     gribTimer.stop();
     elapsed_grib += gribTimer.elapsed();
 
     timer.stop();
 
     codes_handle_delete(handle);
+
     Log::info() << "Fields written: " << writeCount << std::endl;
     Log::info() << "Bytes written: " << bytesWritten << std::endl;
     Log::info() << "Total duration: " << timer.elapsed() << std::endl;
@@ -249,6 +241,7 @@ void FDBWrite::executeRead(const eckit::option::CmdArgs &args) {
                         real_param++;
                     }
                     request.setValue("param", real_param);
+
                     Log::info() << "Member: " << member
                                 << ", step: " << step
                                 << ", level: " << level
@@ -267,6 +260,7 @@ void FDBWrite::executeRead(const eckit::option::CmdArgs &args) {
     size_t total = dh->copyTo(nullOutputHandle);
 
     timer.stop();
+
     Log::info() << "Fields read: " << fieldsRead << std::endl;
     Log::info() << "Bytes read: " << total << std::endl;
     Log::info() << "Total duration: " << timer.elapsed() << std::endl;
@@ -294,16 +288,8 @@ void FDBWrite::executeList(const eckit::option::CmdArgs &args) {
     size_t number = args.getLong("number", 1);
     size_t level = args.getLong("level", 1);
 
-    //vanilla
-    // request.setValue("expver", args.getString("expver"));
+    request.setValue("expver", args.getString("expver"));
     request.setValue("class", args.getString("class"));
-    //gesalous hack
-    std::vector<std::string> expvers = {"yyyy", "xxxx", "wwww", "zzzz", 
-                                        "xyxy", "xwxw", "xzxz", "wzwz", 
-                                        "wzwx", "wzxw", "wzxx", "wzxy", 
-                                        "wzzy", "wzzz", "wzyy", "wzyz"};
-    request.values("expver",expvers);
-    // request.setValue("class", args.getString("class"));
 
     eckit::Timer timer;
     timer.start();
@@ -346,6 +332,7 @@ void FDBWrite::executeList(const eckit::option::CmdArgs &args) {
     }
 
     timer.stop();
+
     Log::info() << "fdb-hammer - Fields listed: " << count << std::endl;
     Log::info() << "fdb-hammer - List duration: " << timer.elapsed() << std::endl;
 

@@ -48,6 +48,7 @@ std::shared_ptr<FieldLocation> ParallaxFieldLocation::make_shared() const {
 }
 
 eckit::DataHandle *ParallaxFieldLocation::dataHandle() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     if (remapKey_.empty()) {
         return uri_.path().partHandle(offset(), length());
     } else {
@@ -64,10 +65,12 @@ void ParallaxFieldLocation::print(std::ostream &out) const {
 }
 
 void ParallaxFieldLocation::visit(FieldLocationVisitor& visitor) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     visitor(*this);
 }
 
 void ParallaxFieldLocation::encode(eckit::Stream& s) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     LOG_DEBUG(LibFdb5::instance().debug(), LibFdb5) << "ParallaxFieldLocation encode URI " << uri_.asRawString() << std::endl;
 
     FieldLocation::encode(s);

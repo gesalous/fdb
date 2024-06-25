@@ -39,7 +39,7 @@ namespace fdb5 {
 //----------------------------------------------------------------------------------------------------------------------
 
 void ParallaxEngine::scan_dbs(const std::string& path, std::list<std::string>& dbs) const {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     if ((eckit::PathName(path) / "toc").exists()) {
         dbs.push_back(path);
         return;
@@ -109,20 +109,24 @@ void ParallaxEngine::scan_dbs(const std::string& path, std::list<std::string>& d
 }
 
 std::string ParallaxEngine::name() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return ParallaxEngine::typeName();
 }
 
 std::string ParallaxEngine::dbType() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return ParallaxEngine::typeName();
 }
 
 eckit::URI ParallaxEngine::location(const Key& key, const Config& config) const
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return URI("toc", CatalogueRootManager(config).directory(key).directory_);
 }
 
 bool ParallaxEngine::canHandle(const eckit::URI& uri) const
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     if (uri.scheme() != "toc")
         return false;
 
@@ -133,12 +137,14 @@ bool ParallaxEngine::canHandle(const eckit::URI& uri) const
 
 static void matchKeyToDB(const Key& key, std::set<Key>& keys, const char* missing, const Config& config)
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     const Schema& schema = config.schema();
     schema.matchFirstLevel(key, keys, missing);
 }
 
 static void matchRequestToDB(const metkit::mars::MarsRequest& rq, std::set<Key>& keys, const char* missing, const Config& config)
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     const Schema& schema = config.schema();
     schema.matchFirstLevel(rq, keys, missing);
 }
@@ -150,7 +156,7 @@ std::set<eckit::PathName> ParallaxEngine::databases(const std::set<Key>& keys,
                                                const Config& config) const {
 
     std::set<eckit::PathName> result;
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     for (std::vector<eckit::PathName>::const_iterator j = roots.begin(); j != roots.end(); ++j) {
 
         LOG_DEBUG_LIB(LibFdb5) << "Scanning for TOC FDBs in root " << *j << std::endl;
@@ -196,7 +202,7 @@ std::vector<eckit::URI> ParallaxEngine::databases(const Key& key,
                                                   const Config& config) const {
 
     std::set<Key> keys;
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     matchKeyToDB(key, keys, regexForMissingValues, config);
 
     LOG_DEBUG_LIB(LibFdb5) << "Matched DB schemas for key " << key << " -> keys " << keys << std::endl;
@@ -225,7 +231,7 @@ std::vector<eckit::URI> ParallaxEngine::databases(const metkit::mars::MarsReques
                                                   const Config& config) const {
 
     std::set<Key> keys;
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
 //    matchRequestToDB(request, keys, regexForMissingValues, config);
     matchRequestToDB(request, keys, "", config);
 
@@ -252,21 +258,25 @@ std::vector<eckit::URI> ParallaxEngine::databases(const metkit::mars::MarsReques
 
 std::vector<eckit::URI> ParallaxEngine::allLocations(const Key& key, const Config& config) const
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return databases(key, CatalogueRootManager(config).allRoots(key), config);
 }
 
 std::vector<eckit::URI> ParallaxEngine::visitableLocations(const Key& key, const Config& config) const
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return databases(key, CatalogueRootManager(config).visitableRoots(key), config);
 }
 
 std::vector<URI> ParallaxEngine::visitableLocations(const metkit::mars::MarsRequest& request, const Config& config) const
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return databases(request, CatalogueRootManager(config).visitableRoots(request), config);
 }
 
 std::vector<eckit::URI> ParallaxEngine::writableLocations(const Key& key, const Config& config) const
 {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return databases(key, CatalogueRootManager(config).canArchiveRoots(key), config);
 }
 
@@ -277,7 +287,7 @@ void ParallaxEngine::print(std::ostream& out) const
 
 static EngineBuilder<ParallaxEngine> toc_builder;
 
-// static eckit::LocalFileManager manager_toc("toc");
+static eckit::LocalFileManager manager_toc("parallax");
 
 //----------------------------------------------------------------------------------------------------------------------
 

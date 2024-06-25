@@ -36,6 +36,7 @@ ParallaxCatalogueReader::~ParallaxCatalogueReader() {
 }
 
 void ParallaxCatalogueReader::loadIndexesAndRemap() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;    
     std::vector<Key> remapKeys;
     std::vector<Index> indexes = loadIndexes(false, nullptr, nullptr, &remapKeys);
 
@@ -47,7 +48,7 @@ void ParallaxCatalogueReader::loadIndexesAndRemap() {
 }
 
 bool ParallaxCatalogueReader::selectIndex(const Key &key) {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
     if(currentIndexKey_ == key) {
         return true;
     }
@@ -72,7 +73,7 @@ void ParallaxCatalogueReader::deselectIndex() {
 }
 
 bool ParallaxCatalogueReader::open() {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
     // This used to test if indexes_.empty(), but it is perfectly valid to have a DB with no indexes
     // if it has been created with fdb-root --create.
     // See MARS-
@@ -86,6 +87,7 @@ bool ParallaxCatalogueReader::open() {
 }
 
 bool ParallaxCatalogueReader::axis(const std::string &keyword, eckit::StringSet &s) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
     bool found = false;
     for (auto m = matching_.begin(); m != matching_.end(); ++m) {
         if ((*m)->first.axes().has(keyword)) {
@@ -98,12 +100,14 @@ bool ParallaxCatalogueReader::axis(const std::string &keyword, eckit::StringSet 
 }
 
 void ParallaxCatalogueReader::close() {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
     for (auto m = indexes_.begin(); m != indexes_.end(); ++m) {
         m->first.close();
     }
 }
 
 bool ParallaxCatalogueReader::retrieve(const Key& key, Field& field) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
     LOG_DEBUG_LIB(LibFdb5) << "Trying to retrieve key " << key << std::endl;
     LOG_DEBUG_LIB(LibFdb5) << "Scanning indexes " << matching_.size() << std::endl;
 
@@ -122,11 +126,12 @@ bool ParallaxCatalogueReader::retrieve(const Key& key, Field& field) const {
 }
 
 void ParallaxCatalogueReader::print(std::ostream &out) const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
     out << "ParallaxCatalogueReader(" << directory() << ")";
 }
 
 std::vector<Index> ParallaxCatalogueReader::indexes(bool sorted) const {
-
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
     std::vector<Index> returnedIndexes;
     returnedIndexes.reserve(indexes_.size());
     for (auto idx = indexes_.begin(); idx != indexes_.end(); ++idx) {

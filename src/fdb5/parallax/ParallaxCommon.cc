@@ -24,6 +24,7 @@
 namespace fdb5 {
 
 eckit::PathName ParallaxCommon::findRealPath(const eckit::PathName& path) {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;  
 
     // realpath only works on existing paths, so work back up the path until
     // we find one that does, get the realpath on that, then reconstruct.
@@ -40,6 +41,7 @@ ParallaxCommon::ParallaxCommon(const eckit::PathName& directory) :
     dirty_(false) {}
 
 void ParallaxCommon::checkUID() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     static bool fdbOnlyCreatorCanWrite = eckit::Resource<bool>("fdbOnlyCreatorCanWrite", true);
     if (!fdbOnlyCreatorCanWrite) {
         return;
@@ -62,6 +64,7 @@ void ParallaxCommon::checkUID() const {
 }
 
 uid_t ParallaxCommon::dbUID() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     if (dbUID_ == static_cast<uid_t>(-1))
         dbUID_ = directory_.owner();
 
@@ -69,6 +72,7 @@ uid_t ParallaxCommon::dbUID() const {
 }
 
 std::string ParallaxCommon::userName(uid_t uid) {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     struct passwd* p = getpwuid(uid);
 
     if (p) {
