@@ -109,27 +109,39 @@ void ParallaxCatalogue::loadSchema() {
     Timer timer("ParallaxCatalogue::loadSchema()", Log::debug<LibFdb5>());
     //schema_ = &SchemaRegistry::instance().get(schemaPath());
 
+    uint32_t max_value_size = par_get_max_kv_pair_size() - PARALLAX_MAX_KEY_SIZE;
+    size_t num_buffers = (schema_size + max_value_size - 1) / max_value_size;
 
     std::vector<char> schema_read(schema_size, '\0');
+    size_t curr_pos = 0;
+    for (size_t i = 0; i < num_buffers; i++) {
+        std::vector<char> temp_schema_read(max_value_size, '\0');
+        const char* error_get = NULL;
+        struct par_key parallax_key;
 
-    const char* error_get = NULL;
-    struct par_key parallax_key;
-    parallax_key.size = strlen("schema");
-    parallax_key.data = "schema";
+        std::string key_str = "schema" + std::to_string(i);
 
-    struct par_value value;
-    value.val_buffer = &schema_read[0];
-    value.val_buffer_size = schema_size;
+        parallax_key.size = strlen(key_str.c_str());
+        parallax_key.data = key_str.c_str();
+        //std::cout << "schema key: " << key_str << std::endl;
+        struct par_value value;
+        value.val_buffer = &temp_schema_read[0];
+        value.val_buffer_size = max_value_size;
+        //std::cout << "segment size: " << value.val_buffer_size << std::endl;
+        par_get(this->schema_handle, &parallax_key, &value, &error_get);
+        if (error_get) {
+            std::cout << "Sorry Parallax get failed reason: " << error_get << std ::endl;
+            _exit(EXIT_FAILURE);
+        }
+        size_t bytes_to_copy = std::min(static_cast<size_t>(value.val_buffer_size), schema_size - curr_pos);
+        std::copy(temp_schema_read.begin(), temp_schema_read.begin() + bytes_to_copy, schema_read.begin() + curr_pos);
+        curr_pos += bytes_to_copy;        
 
-    par_get(this->parallax_handle, &parallax_key, &value, &error_get);
-    if (error_get) {
-        std::cout << "Sorry Parallax get failed reason: " << error_get << std ::endl;
-        _exit(EXIT_FAILURE);
     }
-    
+
     // std::cout << "Retrieved buffer (byte by byte): ";
-    // for (size_t i = 0; i < value.val_buffer_size; ++i) {
-    //     std::cout << value.val_buffer[i];
+    // for (size_t i = 0; i < schema_size; ++i) {
+    //     std::cout << schema_read[i];
     // }
     // std::cout << std::endl;
 
@@ -176,10 +188,10 @@ std::string ParallaxCatalogue::type() const
     return ParallaxCatalogue::catalogueTypeName();
 }
 
-// void ParallaxCatalogue::checkUID() const {
-//     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
-//     TocHandler::checkUID();
-// }
+void ParallaxCatalogue::checkUID() const {
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    TocHandler::checkUID();
+}
 
 void ParallaxCatalogue::remove(const eckit::PathName& path, std::ostream& logAlways, std::ostream& logVerbose, bool doit) {
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
