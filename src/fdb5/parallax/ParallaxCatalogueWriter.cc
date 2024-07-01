@@ -67,14 +67,14 @@ ParallaxCatalogueWriter::ParallaxCatalogueWriter(const Key &key, const fdb5::Con
 
     const char* error_message = NULL;
 
-    parallax_handle = par_open(&db_options, &error_message);
+    schema_handle = par_open(&db_options, &error_message);
     if (error_message)
         LSM_DEBUG("Parallax says: %s", error_message);
 
-    if (parallax_handle == NULL && error_message)
+    if (schema_handle == NULL && error_message)
         LSM_FATAL("Error uppon opening the DB, error %s", error_message);
     const eckit::PathName& path = config.schemaPath();
-    std::cout << "schema path: " << path << std::endl;
+    //std::cout << "schema path: " << path << std::endl;
 
 
     std::stringstream schema_buffer;
@@ -86,33 +86,47 @@ ParallaxCatalogueWriter::ParallaxCatalogueWriter(const Key &key, const fdb5::Con
         std::cout << "Error opening file: " << path << std::endl;
         _exit(EXIT_FAILURE);
     }
-    const char* error_msg = NULL;
-    par_key_value schema_kv;
-    const char* key_str = "schema";
-    
-    schema_kv.k.size = strlen(key_str);
-    schema_kv.k.data = key_str;
 
     std::string schema_str = schema_buffer.str();
-    // std::cout << "buffer size: " << schema_buffer.str().size() << std::endl;
-    // std::cout << "buffer: " << schema_buffer.str() << std::endl;
+    uint32_t max_value_size = par_get_max_kv_pair_size() - PARALLAX_MAX_KEY_SIZE;
+    schema_size = schema_str.size();
+    size_t num_buffers = (schema_size + max_value_size - 1) / max_value_size;
 
-    schema_kv.v.val_size = schema_str.size();
-    schema_kv.v.val_buffer = const_cast<char*>(schema_str.c_str());
+    //std::cout << "number of buffers: " << num_buffers << std::endl;
+
+    for (size_t i = 0; i < num_buffers; i++){
+        const char* error_msg = NULL;
+        par_key_value schema_kv;
+        std::string key_str = "schema" + std::to_string(i);
+
+        //std::cout << "schema key: " << key_str << std::endl;
+
+        schema_kv.k.size = strlen(key_str.c_str());
+        schema_kv.k.data = key_str.c_str();
+
+        size_t start_position = i * max_value_size;
+        size_t segment_size = std::min(static_cast<size_t>(max_value_size), schema_size - start_position);
+
+        //std::cout << "segment size: " << segment_size << std::endl;
+
+        schema_kv.v.val_size = segment_size;
+        schema_kv.v.val_buffer = new char[segment_size];
+        std::memcpy(schema_kv.v.val_buffer, schema_str.data() + start_position, segment_size);
+
+        par_put(schema_handle, &schema_kv, &error_msg);
+        if (error_msg) {
+            std::cout << "Sorry Parallax put failed reason: " << error_msg << std ::endl;
+            _exit(EXIT_FAILURE);
+        }
+        delete[] schema_kv.v.val_buffer;
+    }
 
     eckit::Log::debug<LibFdb5>() << "Copy schema from "
-                                     << config_.schemaPath()
-                                     << " to "
-                                     << volume_name
-                                     << " at key 'schema'."
-                                     << std::endl;
-
-    par_put(this->parallax_handle, &schema_kv, &error_msg);
-    if (error_msg) {
-        std::cout << "Sorry Parallax put failed reason: " << error_msg << std ::endl;
-        _exit(EXIT_FAILURE);
-    }
-    schema_size = schema_kv.v.val_size;
+                                      << config_.schemaPath()
+                                      << " to "
+                                      << volume_name
+                                      << " at key 'schema'."
+                                      << std::endl;
 
     //writeInitRecord(key);
     ParallaxCatalogue::loadSchema();
@@ -138,43 +152,12 @@ bool ParallaxCatalogueWriter::selectIndex(const Key& key) {
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     currentIndexKey_ = key;
 
-    if (indexes_.find(key) == indexes_.end()) {
-        PathName indexPath(generateIndexPath(key));
+    //std::cout <<"selectIndex key: " << key << std::endl;
+    if (indexes_.find(key) == indexes_.end()) {        
 
-        // Enforce lustre striping if requested
-        if (stripeLustre()) {
-            fdb5LustreapiFileCreate(indexPath.localPath(), stripeIndexLustreSettings());
-        }
-
-        indexes_[key] = Index(new TocIndex(key, indexPath, 0, TocIndex::WRITE));
+        //indexes_[key] = Index(new TocIndex(key, indexPath, 0, TocIndex::WRITE));
     }
-
     current_ = indexes_[key];
-    current_.open();
-    current_.flock();
-
-    // If we are using subtocs, then we need to maintain a duplicate index that doesn't get flushed
-    // each step.
-
-    if (useSubToc()) {
-
-        if (fullIndexes_.find(key) == fullIndexes_.end()) {
-
-            // TODO TODO TODO .master.index
-            PathName indexPath(generateIndexPath(key));
-
-            // Enforce lustre striping if requested
-            if (stripeLustre()) {
-                fdb5LustreapiFileCreate(indexPath.localPath(), stripeIndexLustreSettings());
-            }
-
-            fullIndexes_[key] = Index(new TocIndex(key, indexPath, 0, TocIndex::WRITE));
-        }
-
-        currentFull_ = fullIndexes_[key];
-        currentFull_.open();
-        currentFull_.flock();
-    }
 
     return true;
 }
@@ -309,7 +292,6 @@ const Index& ParallaxCatalogueWriter::currentIndex() {
         ASSERT(!currentIndexKey_.empty());
         selectIndex(currentIndexKey_);
     }
-
     return current_;
 }
 
@@ -381,21 +363,57 @@ const Index& ParallaxCatalogueWriter::currentIndex() {
 //     return ParallaxCatalogue::enabled(controlIdentifier);
 // }
 
+void ParallaxCatalogueWriter::lsm_put(const char* tenantId, const FieldRef& ref) {
+    const char* error_msg = NULL;
+    //std::cout << "lsm_put ref: " << ref << std::endl;
+    
+    par_key_value KV;
+    const char* key_str = tenantId;
+    
+    KV.k.size = strlen(key_str);
+    KV.k.data = key_str;
+
+    // std::cout << "buffer size: " << schema_buffer.str().size() << std::endl;
+    // std::cout << "buffer: " << schema_buffer.str() << std::endl;
+    FieldRef dataCopy = ref;
+    //std::cout << "lsm_put dataCopy: " << dataCopy << std::endl;
+    KV.v.val_size = sizeof(FieldRef);
+    KV.v.val_buffer = reinterpret_cast<char*>(&dataCopy);
+    FieldRef* ptr = reinterpret_cast<FieldRef*>(KV.v.val_buffer);
+
+    //std::cout << "KV.v.val_buffer (values): " << *ptr << std::endl;
+    par_put(this->schema_handle, &KV, &error_msg);
+
+    if (error_msg) {
+        std::cout << "Sorry Parallax put failed reason: " << error_msg << std ::endl;
+        _exit(EXIT_FAILURE);
+    }
+
+    
+}
+
+
 void ParallaxCatalogueWriter::archive(const Key& key, std::unique_ptr<FieldLocation> fieldLocation) {
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     dirty_ = true;
-
     if (current_.null()) {
         ASSERT(!currentIndexKey_.empty());
         selectIndex(currentIndexKey_);
     }
 
+    //std::cout << "archive() key: " <<key.valuesToString() << std::endl;
+    std::string tenantId = this->tenantId(key) + "/" + key.valuesToString();
+    std::cout << "archive() tenantId: " << tenantId << std::endl;
+
+    eckit::PathName tocPath ( directory_ );
+    UriStoreWrapper uriStore(tocPath);
     Field field(std::move(fieldLocation), currentIndex().timestamp());
+    FieldRef ref(uriStore.files_, field);
+    std::cout << "archive ref: " << ref << std::endl;
+    //current_.put(key, field);
 
-    current_.put(key, field);
+    lsm_put(tenantId.c_str(), ref);
 
-    // if (useSubToc())
-    //     currentFull_.put(key, field);
 }
 
 void ParallaxCatalogueWriter::flush() {
@@ -410,12 +428,27 @@ void ParallaxCatalogueWriter::flush() {
     currentFull_ = Index();
 }
 
-eckit::PathName ParallaxCatalogueWriter::generateIndexPath(const Key &key) const {
+std::string ParallaxCatalogueWriter::tenantId(const Key &key) const {
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
-    eckit::PathName tocPath ( directory_ );
-    tocPath /= key.valuesToString();
-    tocPath = eckit::PathName::unique(tocPath) + ".index";
-    return tocPath;
+    
+    eckit::PathName tocPath ( directory_ );  
+    tocPath /= currentIndexKey_.valuesToString();
+    tocPath = eckit::PathName::unique(tocPath);
+    
+    std::string tocPathStr = tocPath.asString();
+    std::string rootPath = "/root/";
+    std::string result = "";
+
+    size_t pos = tocPathStr.find(rootPath);
+    if (pos != std::string::npos) {
+        result = tocPathStr.substr(pos + rootPath.length());
+    } else {
+        std::cerr << "\"/root/\" not found in the path." << std::endl;
+    }
+
+    //std::cout << "result: " << result << std::endl;
+
+    return result;
 }
 
 // n.b. We do _not_ flush the fullIndexes_ set of indexes.

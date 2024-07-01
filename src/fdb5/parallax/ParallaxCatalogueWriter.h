@@ -15,16 +15,6 @@
 #ifndef fdb5_ParallaxCatalogueWriter_H
 #define fdb5_ParallaxCatalogueWriter_H
 
-#define PARALLAX_VOLUME_ENV_VAR "PARH5_VOLUME"
-#define PARALLAX_GLOBAL_DB "GES"
-#define PARALLAX_MAX_KEY_SIZE 256
-#define PARALLAX_L0_SIZE (16 * 1024 * 1024UL);
-#define PARALLAX_GROWTH_FACTOR 8
-/* The value must be between 256 and 65535 (inclusive) */
-#define PARALLAX_VOL_CONNECTOR_VALUE ((H5VL_class_value_t)12202)
-#define PARALLAX_VOL_CONNECTOR_NAME "parallax_vol_connector"
-#define PARALLAX_VOL_CONNECTOR_NAME_SIZE 128
-#define PARALLAX_NUM_KEYS 4
 
 #include "eckit/os/AutoUmask.h"
 
@@ -33,6 +23,7 @@
 
 #include "fdb5/parallax/ParallaxCatalogue.h"
 #include "fdb5/toc/TocSerialisationVersion.h"
+#include "fdb5/toc/FieldRef.h"
 
 #include <fstream>
 namespace fdb5 {
@@ -92,7 +83,8 @@ private: // methods
     void flushIndexes();
     void compactSubTocIndexes();
 
-    eckit::PathName generateIndexPath(const Key &key) const;
+    std::string tenantId(const Key &key) const;
+    void lsm_put(const char* tenantId, const FieldRef& field);
 
 private: // types
 
