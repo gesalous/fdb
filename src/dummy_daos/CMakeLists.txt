@@ -1,3 +1,17 @@
+option(USE_PARALLAX "Use parallax.cc instead of daos.cc" OFF)
+
+set (SOURCES 
+    daos.h
+    dummy_daos.h
+    dummy_daos.cc
+)
+
+if(USE_PARALLAX)
+    list(APPEND SOURCES parallax.cc)
+else()
+    list(APPEND SOURCES daos.cc)
+endif()
+
 ecbuild_add_library(
 
     TARGET dummy_daos
@@ -8,10 +22,7 @@ ecbuild_add_library(
     HEADER_DESTINATION ${INSTALL_INCLUDE_DIR}
 
     SOURCES
-        daos.h
-        daos.cc
-        dummy_daos.h
-        dummy_daos.cc
+        ${SOURCES}
 
     PUBLIC_LIBS
         eckit

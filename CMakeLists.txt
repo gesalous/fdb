@@ -69,8 +69,19 @@ ecbuild_add_option( FEATURE LUSTRE  # option defined in fdb5_config.h
 ecbuild_add_option( FEATURE FDB_REMOTE
                     DEFAULT ON
                     DESCRIPTION "Support for FDB remote access" )
+find_library(UUID_LIBRARY
+    NAMES uuid
+    PATHS /usr/lib/x86_64-linux-gnu
+)
 
-find_package(UUID QUIET)
+if(UUID_LIBRARY)
+    message(STATUS "UUID library found: ${UUID_LIBRARY}")
+    set(UUID_FOUND TRUE)
+else()
+    message(FATAL_ERROR "UUID library not found")
+endif()
+
+#find_package(UUID QUIET)
 
 find_package(DAOS QUIET)
 
