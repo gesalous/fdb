@@ -14,7 +14,7 @@
 #pragma once
 
 #include "eckit/io/DataHandle.h"
-
+#include <optional>
 #include "fdb5/daos/DaosSession.h"
 #include "fdb5/daos/DaosName.h"
 

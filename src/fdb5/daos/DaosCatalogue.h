@@ -18,6 +18,7 @@
 #include "fdb5/daos/DaosCommon.h"
 #include "fdb5/daos/DaosEngine.h"
 #include "fdb5/daos/DaosOID.h"
+#include <optional>
 
 namespace fdb5 {
 
