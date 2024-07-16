@@ -1,4 +1,4 @@
-if (HAVE_DUMMY_DAOS)
+if (HAVE_DUMMY_DAOS AND NOT USE_PARALLAX)
 
   list( APPEND dummy_daos_tests
     write_read

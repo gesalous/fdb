@@ -2,6 +2,27 @@ cmake_minimum_required( VERSION 3.12 FATAL_ERROR )
 
 find_package( ecbuild 3.7 REQUIRED HINTS ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../ecbuild)
 
+# Search for the library in /home/gesalous/local/lib
+find_library(PARALLAX_LIBRARY 
+             NAMES parallax
+	     HINTS ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib64)
+
+# Search for the header in /home/gesalous/local/include
+find_path(PARALLAX_INCLUDE_DIR 
+          NAMES parallax.h 
+          HINTS ${CMAKE_INSTALL_PREFIX}/include)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+
+if(PARALLAX_LIBRARY AND PARALLAX_INCLUDE_DIR)
+  message(INFO  "--> Parallax found!")
+  message(INFO " --> Library: ${PARALLAX_LIBRARY}")
+  message(INFO " --> Include directory: ${PARALLAX_INCLUDE_DIR}")
+else()
+  message(FATAL_ERROR "Parallax not found!")
+endif()
+
 project( fdb5 LANGUAGES C CXX )
 
 set(CMAKE_CXX_STANDARD 17)
@@ -174,6 +195,7 @@ get_directory_property( fdb5_DEFINITIONS COMPILE_DEFINITIONS )
 
 add_subdirectory( src )
 add_subdirectory( tests )
+include_directories( ${PARALLAX_INCLUDE_DIR} )
 
 ### finalize
 

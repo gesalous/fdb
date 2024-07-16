@@ -3,13 +3,12 @@ option(USE_PARALLAX "Use parallax.cc instead of daos.cc" OFF)
 set (SOURCES 
     daos.h
     dummy_daos.h
-    dummy_daos.cc
 )
 
 if(USE_PARALLAX)
-    list(APPEND SOURCES parallax.cc)
+    list(APPEND SOURCES parallax.cc dummy_parallax.cc)
 else()
-    list(APPEND SOURCES daos.cc)
+    list(APPEND SOURCES daos.cc dummy_daos.cc)
 endif()
 
 ecbuild_add_library(

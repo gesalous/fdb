@@ -462,7 +462,7 @@ ecbuild_add_library(
         "${DAOS_LIBRARIES}"
         "${DAOS_TESTS_LIBRARIES}"
 )
-
+target_link_libraries(fdb5 PRIVATE ${PARALLAX_LIBRARY})
 if(HAVE_FDB_BUILD_TOOLS)
 
   list( APPEND fdb5_scripts fdb fdb-which )
