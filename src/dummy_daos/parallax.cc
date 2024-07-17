@@ -1,17 +1,8 @@
-/*
- * (C) Copyright 1996- ECMWF.
- *
- * This software is licensed under the terms of the Apache Licence Version 2.0
- * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
- * In applying this licence, ECMWF does not waive the privileges and immunities
- * granted to it by virtue of its status as an intergovernmental organisation nor
- * does it submit to any jurisdiction.
- */
 
 /*
- * @file   daos.cc
- * @author Nicolau Manubens
- * @date   Jun 2022
+ * @file   parallax.cc
+ * @author Toutoudakis Michalis
+ * @date   July 2024
  */
 
 #include <cstring>
@@ -99,7 +90,6 @@ int daos_init() {
     const char* argv[2] = {"dummy-parallax-api", 0};
     eckit::Main::initialise(1, const_cast<char**>(argv));
     PathName root = dummy_daos_root();
-    root.mkdir();
     return 0;
 }
 
