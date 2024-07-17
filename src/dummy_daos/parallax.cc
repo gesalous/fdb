@@ -170,7 +170,8 @@ std::string get_path_after_default(const std::string &fullPath) {
     // Find the position of "default/"
     size_t pos = fullPath.find("default/");
 
-    return fullPath.substr(pos + 8); // +8 to skip "default/"
+    // +8 to skip "default/ because default/ has 8 characters"
+    return fullPath.substr(pos + 8); 
 }
 
 std::string get_path_after_last_slash(const std::string &fullPath) {
