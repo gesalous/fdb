@@ -81,7 +81,7 @@ typedef struct daos_handle_internal_t {
     PathName path;
 } daos_handle_internal_t;
 
-std::set<std::string> created_dbs;
+std::map<std::string, par_handle> created_dbs;
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ int daos_fini() {
     return 0;
 }
 
-bool lsm_open(par_handle* handle, std::string db_name){
+bool lsm_open(std::string db_name){
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     const char* volume_name = getenv(PARALLAX_VOLUME_ENV_VAR);
 
@@ -112,20 +112,20 @@ bool lsm_open(par_handle* handle, std::string db_name){
     db_options.options[ENABLE_BLOOM_FILTERS].value  = 1;
 
     const char* error_message = NULL;
-
-    *handle = par_open(&db_options, &error_message);
+    par_handle handle;
+    handle = par_open(&db_options, &error_message);
     if (error_message)
         LSM_DEBUG("Parallax says: %s", error_message);
 
-    if (*handle == NULL && error_message)
+    if (handle == NULL && error_message)
         LSM_FATAL("Error uppon opening the DB, error %s", error_message);
 
-    created_dbs.insert(db_name);
-
+    created_dbs[db_name] = handle;
+    
     return true;
 }
 
-bool lsm_put(par_handle* handle, const char* key, const char* value, daos_size_t size) {
+bool lsm_put(par_handle handle, const char* key, const char* value, daos_size_t size) {
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     par_key_value KV;
     KV.k.size       = strlen(key) + 1;
@@ -137,7 +137,7 @@ bool lsm_put(par_handle* handle, const char* key, const char* value, daos_size_t
     memset(KV.v.val_buffer, '\0', size);
     std::memcpy(KV.v.val_buffer, value, size);
     const char* error_msg_put = NULL;
-    par_put(*handle, &KV, &error_msg_put);
+    par_put(handle, &KV, &error_msg_put);
     if (error_msg_put) {
         LSM_FATAL("Parallax put failed reason: %s", error_msg_put);
         _exit(EXIT_FAILURE);
@@ -147,7 +147,7 @@ bool lsm_put(par_handle* handle, const char* key, const char* value, daos_size_t
     return true;
 }
 
-int lsm_get(par_handle* handle, const char* key, std::string &buffer) {
+int lsm_get(par_handle handle, const char* key, std::string &buffer) {
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     struct par_key parallax_key;
     parallax_key.size       = strlen(key) + 1;
@@ -156,7 +156,7 @@ int lsm_get(par_handle* handle, const char* key, std::string &buffer) {
     struct par_value value = {0};
 
     const char* error_msg_get = NULL;
-    par_get(*handle, &parallax_key, &value, &error_msg_get);
+    par_get(handle, &parallax_key, &value, &error_msg_get);
     if (error_msg_get) {
         LSM_DEBUG("Parallax get failed reason: %s", error_msg_get);
         return -DER_NONEXIST;
@@ -201,6 +201,9 @@ int daos_pool_connect(const char *pool, const char *sys, unsigned int flags,
     impl->path = path;
     poh->impl = impl.release();
 
+    // Initialize parallax databases
+    lsm_open("metadata");
+    lsm_open("tenants");
     return 0;
 
 }
@@ -212,10 +215,8 @@ int daos_pool_disconnect(daos_handle_t poh, daos_event_t *ev) {
 
     if (ev != NULL) NOTIMP;
     
-    par_handle handle;
     for (const auto& db_name : created_dbs) {
-        lsm_open(&handle, db_name);
-        par_sync(handle);
+        par_sync(db_name.second);
     }
 
     return 0;
@@ -292,12 +293,11 @@ int daos_cont_create_with_label(daos_handle_t poh, const char *label,
 
 
     // open parallax
-    par_handle handle = {0};
-    lsm_open(&handle, "metadata");
+    par_handle handle = created_dbs["metadata"];
 
     // check if label exists
     std::string buffer;
-    if (lsm_get(&handle, label, buffer) == 0){
+    if (lsm_get(handle, label, buffer) == 0){
         return 0;
     }
 
@@ -311,7 +311,7 @@ int daos_cont_create_with_label(daos_handle_t poh, const char *label,
     if (uuid != NULL) uuid_copy(*uuid, new_uuid);
 
     // put parallax entry in metadata region for the match of containerName and uuid
-    lsm_put(&handle, label, cont_uuid_cstr, strlen(cont_uuid_cstr));
+    lsm_put(handle, label, cont_uuid_cstr, strlen(cont_uuid_cstr));
 
     if (uuid != NULL) uuid_copy(*uuid, new_uuid);
 
@@ -342,13 +342,11 @@ int daos_cont_open(daos_handle_t poh, const char *cont, unsigned int flags, daos
     } else {
         path /= cont;
     }
-    // open parallax
-    par_handle handle = {0};
-    lsm_open(&handle, "metadata");
+    par_handle handle = created_dbs["metadata"];
 
     // check if key exists
     std::string buffer;
-    if (lsm_get(&handle, cont, buffer) == -DER_NONEXIST){
+    if (lsm_get(handle, cont, buffer) == -DER_NONEXIST){
         return -DER_NONEXIST;
     }
 
@@ -446,11 +444,10 @@ int daos_kv_put(daos_handle_t oh, daos_handle_t th, uint64_t flags, const char *
     std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     
     std::string region_name = "tenants";
-    par_handle handle = {0};
-    lsm_open(&handle, region_name);
+    par_handle handle = created_dbs[region_name];
     
     std::string lsm_key = get_path_after_default(oh.impl->path) + "/" + key;
-    lsm_put(&handle, lsm_key.c_str(), (const char*)buf, size);
+    lsm_put(handle, lsm_key.c_str(), (const char*)buf, size);
     
     return 0;
 
@@ -470,11 +467,10 @@ int daos_kv_get(daos_handle_t oh, daos_handle_t th, uint64_t flags, const char *
     std::string lsm_key = get_path_after_default(oh.impl->path) + "/" + key;
 
     // check if "container" exits
-    par_handle handle = {0};
-    lsm_open(&handle, region_name); 
+    par_handle handle = created_dbs[region_name];
 
     std::string buffer;
-    int exists = lsm_get(&handle, lsm_key.c_str(), buffer);
+    int exists = lsm_get(handle, lsm_key.c_str(), buffer);
     
     if (exists != 0 && buf != NULL) return -DER_NONEXIST;
 
@@ -523,8 +519,7 @@ int daos_kv_list(daos_handle_t oh, daos_handle_t th, uint32_t *nr,
     if (anchor == NULL) return -1;
 
     std::string region_name = "tenants";
-    par_handle handle;
-    lsm_open(&handle, region_name);
+    par_handle handle = created_dbs[region_name];
     const char* error_message = NULL;
     struct par_key it_key= {0};
     par_scanner scanner = par_init_scanner(handle, &it_key, PAR_GREATER_OR_EQUAL, &error_message);
