@@ -133,8 +133,7 @@ bool lsm_put(par_handle handle, const char* key, const char* value, daos_size_t 
 
 
     KV.v.val_size = size;
-    KV.v.val_buffer = new char[size];
-    std::memcpy(KV.v.val_buffer, value, size);
+    KV.v.val_buffer = (char*) value;
     const char* error_msg_put = NULL;
     par_put(handle, &KV, &error_msg_put);
     if (error_msg_put) {
@@ -142,11 +141,10 @@ bool lsm_put(par_handle handle, const char* key, const char* value, daos_size_t 
         _exit(EXIT_FAILURE);
     }
 
-    delete[] KV.v.val_buffer;
     return true;
 }
 
-int lsm_get(par_handle handle, const char* key, std::string &buffer) {
+par_value lsm_get(par_handle handle, const char* key) {
     //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     struct par_key parallax_key;
     parallax_key.size       = strlen(key) + 1;
@@ -158,11 +156,11 @@ int lsm_get(par_handle handle, const char* key, std::string &buffer) {
     par_get(handle, &parallax_key, &value, &error_msg_get);
     if (error_msg_get) {
         LSM_DEBUG("Parallax get failed reason: %s", error_msg_get);
-        return -DER_NONEXIST;
+        value.val_buffer = NULL;
+        value.val_size = 0;
     } 
-    buffer.assign(value.val_buffer, value.val_size);
     
-    return 0;
+    return value;
 }
 
 std::string get_path_after_default(const std::string &fullPath) {
@@ -290,15 +288,11 @@ int daos_cont_create_with_label(daos_handle_t poh, const char *label,
 
     eckit::PathName label_symlink_path = poh.impl->path / label;
 
-
-    // open parallax
     par_handle handle = created_dbs["metadata"];
-
-    // check if label exists
-    std::string buffer;
-    if (lsm_get(handle, label, buffer) == 0){
-        return 0;
-    }
+    struct par_key search_key;
+    search_key.size       = strlen(label) + 1;
+    search_key.data       = label;
+    if (par_exists(handle, &search_key) == 0) return 0;
 
     // Create uuid for the "container"
     uuid_t new_uuid = {0};
@@ -342,15 +336,18 @@ int daos_cont_open(daos_handle_t poh, const char *cont, unsigned int flags, daos
         path /= cont;
     }
     par_handle handle = created_dbs["metadata"];
-
     // check if key exists
-    std::string buffer;
-    if (lsm_get(handle, cont, buffer) == -DER_NONEXIST){
-        return -DER_NONEXIST;
-    }
+    struct par_key search_key;
+    search_key.size       = strlen(cont) + 1;
+    search_key.data       = cont;
+
+    if (par_exists(handle, &search_key) != 0) return -DER_NONEXIST;
+
+    par_value value = lsm_get(handle, cont);
+    std::string string_value = std::string(value.val_buffer, 0, value.val_size);
 
     eckit::PathName realPath{poh.impl->path};
-    realPath /= buffer;
+    realPath /= string_value;
 
     std::unique_ptr<daos_handle_internal_t> impl(new daos_handle_internal_t);
     impl->path = realPath;
@@ -468,22 +465,21 @@ int daos_kv_get(daos_handle_t oh, daos_handle_t th, uint64_t flags, const char *
     // check if "container" exits
     par_handle handle = created_dbs[region_name];
 
-    std::string buffer;
-    int exists = lsm_get(handle, lsm_key.c_str(), buffer);
+    par_value value = lsm_get(handle, lsm_key.c_str());
     
-    if (exists != 0 && buf != NULL) return -DER_NONEXIST;
+    if (value.val_buffer == NULL && value.val_size == 0 && buf != NULL) return -DER_NONEXIST;
 
     daos_size_t dest_size = *size;
     *size = 0;
-    if (exists != 0) return 0;    
+    if (value.val_buffer == NULL && value.val_size == 0) return 0;    
 
-    *size = buffer.size();
+    *size = value.val_size;
 
     if (buf == NULL) return 0;
 
     if (*size > dest_size) return -1;
 
-    ::memcpy(buf, buffer.c_str(), *size);
+    ::memcpy(buf, value.val_buffer, *size);
 
     return 0;
 
