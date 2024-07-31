@@ -87,7 +87,7 @@ RUN git clone -b embed_bloom_filters_in_sst https://github.com/Toutou98/parallax
     rm -rf build && \
     mkdir build && \
     cd build && \
-    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=ON && \
+    cmake .. -DCMAKE_BUILD_TYPE="Debug" -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=ON && \
     make -j10 && \
     make install 
 
