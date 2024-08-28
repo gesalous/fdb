@@ -147,7 +147,7 @@ par_handle par_get_db(const std::string& db_name) {
 // }
 
 int daos_init() {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     const char* argv[2] = {"dummy-parallax-api", 0};
     eckit::Main::initialise(1, const_cast<char**>(argv));
     PathName root = dummy_daos_root();
@@ -155,13 +155,13 @@ int daos_init() {
 }
 
 int daos_fini() {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 }
 
 
 bool lsm_put(par_handle handle, const char* key, const char* value, daos_size_t size) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     par_key_value KV;
     KV.k.size       = strlen(key) + 1;
     KV.k.data       = key;
@@ -182,12 +182,12 @@ bool lsm_put(par_handle handle, const char* key, const char* value, daos_size_t 
 }
 
 par_value lsm_get(par_handle handle, const char* key) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     struct par_key parallax_key;
     parallax_key.size       = strlen(key) + 1;
     parallax_key.data       = key;
 
-    struct par_value value = {0};
+    struct par_value value = {.val_size = 0, .val_buffer = NULL};
 
     const char* error_msg_get = NULL;
     par_get(handle, &parallax_key, &value, &error_msg_get);
@@ -195,8 +195,10 @@ par_value lsm_get(par_handle handle, const char* key) {
         LSM_DEBUG("Parallax get failed reason: %s", error_msg_get);
         value.val_buffer = NULL;
         value.val_size = 0;
-    } 
-    
+        return value;
+    }
+    LSM_DEBUG("Key %s has value size of: %u", key, value.val_size);
+
     return value;
 }
 
@@ -220,7 +222,7 @@ std::string get_path_after_last_slash(const std::string &fullPath) {
 // set path for parallax file
 int daos_pool_connect(const char *pool, const char *sys, unsigned int flags,
                       daos_handle_t *poh, daos_pool_info_t *info, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     poh->impl = nullptr;
 
     if (sys != NULL) NOTIMP;
@@ -230,7 +232,10 @@ int daos_pool_connect(const char *pool, const char *sys, unsigned int flags,
 
     eckit::PathName path = dummy_daos_root() / pool;
     std::cout << "Path is " << path.asString() << std::endl;
-    if (!path.exists()) return -1;
+    if (!path.exists()) {
+        std::cerr << path.asString() << " does not exist ignoring we are Parallax" << std::endl;
+        // return -1;
+    }
 
     std::unique_ptr<daos_handle_internal_t> impl(new daos_handle_internal_t);
     impl->path = path;
@@ -244,7 +249,7 @@ int daos_pool_connect(const char *pool, const char *sys, unsigned int flags,
 }
 
 int daos_pool_disconnect(daos_handle_t poh, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(poh.impl);
     delete poh.impl;
 
@@ -265,13 +270,13 @@ int daos_pool_disconnect(daos_handle_t poh, daos_event_t *ev) {
 int daos_pool_list_cont(daos_handle_t poh, daos_size_t *ncont,
                         struct daos_pool_cont_info *cbuf, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
 
 int daos_cont_create_internal(daos_handle_t poh, uuid_t *uuid) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
 
     ASSERT(poh.impl);
 
@@ -310,7 +315,7 @@ int daos_cont_create_internal(daos_handle_t poh, uuid_t *uuid) {
 }
 
 int daos_cont_create(daos_handle_t poh, uuid_t *uuid, daos_prop_t *cont_prop, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
@@ -319,7 +324,7 @@ int daos_cont_create_with_label(daos_handle_t poh, const char *label,
                                 daos_prop_t *cont_prop, uuid_t *uuid,
                                 daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
 
     ASSERT(poh.impl);
     if (cont_prop != NULL) NOTIMP;
@@ -336,7 +341,7 @@ int daos_cont_create_with_label(daos_handle_t poh, const char *label,
     // check if label exists
     std::string buffer;
     par_value value = lsm_get(handle, label);
-    if(value.val_size == 0)
+    if(value.val_size != 0)
         return 0;
     
 
@@ -359,13 +364,13 @@ int daos_cont_create_with_label(daos_handle_t poh, const char *label,
 }
 
 int daos_cont_destroy(daos_handle_t poh, const char *cont, int force, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 }
 
 int daos_cont_open(daos_handle_t poh, const char *cont, unsigned int flags, daos_handle_t *coh,
                     daos_cont_info_t *info, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(poh.impl);
     if (flags != DAOS_COO_RW) NOTIMP;
     if (info != NULL) NOTIMP;
@@ -389,7 +394,8 @@ int daos_cont_open(daos_handle_t poh, const char *cont, unsigned int flags, daos
     search_key.size       = strlen(cont) + 1;
     search_key.data       = cont;
 
-    if (par_exists(handle, &search_key) != 0) return -DER_NONEXIST;
+    if (par_exists(handle, &search_key) != PAR_SUCCESS)
+        return -DER_NONEXIST;
 
     par_value value = lsm_get(handle, cont);
     std::string string_value = std::string(value.val_buffer, 0, value.val_size);
@@ -406,7 +412,7 @@ int daos_cont_open(daos_handle_t poh, const char *cont, unsigned int flags, daos
 
 int daos_cont_close(daos_handle_t coh, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(coh.impl);
     delete coh.impl;
     if (ev != NULL) NOTIMP;
@@ -417,7 +423,7 @@ int daos_cont_close(daos_handle_t coh, daos_event_t *ev) {
 int daos_cont_alloc_oids(daos_handle_t coh, daos_size_t num_oids, uint64_t *oid,
                          daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
@@ -426,7 +432,7 @@ int daos_obj_generate_oid(daos_handle_t coh, daos_obj_id_t *oid,
                           enum daos_otype_t type, daos_oclass_id_t cid,
                           daos_oclass_hints_t hints, uint32_t args) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
 
     ASSERT(coh.impl);
     if (type != DAOS_OT_KV_HASHED && type != DAOS_OT_ARRAY && type != DAOS_OT_ARRAY_BYTE) NOTIMP;
@@ -445,7 +451,7 @@ int daos_obj_generate_oid(daos_handle_t coh, daos_obj_id_t *oid,
 int daos_kv_open(daos_handle_t coh, daos_obj_id_t oid, unsigned int mode,
                  daos_handle_t *oh, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(coh.impl);
     if (mode != DAOS_OO_RW) NOTIMP;
     if (ev != NULL) NOTIMP;
@@ -465,14 +471,14 @@ int daos_kv_open(daos_handle_t coh, daos_obj_id_t oid, unsigned int mode,
 
 int daos_kv_destroy(daos_handle_t oh, daos_handle_t th, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
 
 int daos_obj_close(daos_handle_t oh, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(oh.impl);
     delete oh.impl;
 
@@ -485,7 +491,7 @@ int daos_obj_close(daos_handle_t oh, daos_event_t *ev) {
 int daos_kv_put(daos_handle_t oh, daos_handle_t th, uint64_t flags, const char *key,
                 daos_size_t size, const void *buf, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     
     par_handle handle = par_get_db("tenants");
     
@@ -500,7 +506,7 @@ int daos_kv_get(daos_handle_t oh, daos_handle_t th, uint64_t flags, const char *
                 daos_size_t *size, void *buf, daos_event_t *ev) {
 
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(oh.impl);
     if (th.impl != DAOS_TX_NONE.impl) NOTIMP;
     if (flags != 0) NOTIMP;
@@ -535,7 +541,7 @@ int daos_kv_get(daos_handle_t oh, daos_handle_t th, uint64_t flags, const char *
 int daos_kv_remove(daos_handle_t oh, daos_handle_t th, uint64_t flags,
                    const char *key, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
@@ -544,7 +550,7 @@ int daos_kv_list(daos_handle_t oh, daos_handle_t th, uint32_t *nr,
                  daos_key_desc_t *kds, d_sg_list_t *sgl, daos_anchor_t *anchor,
                  daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     ASSERT(oh.impl);
     static std::vector<std::string> ongoing_req;
     static std::string req_hash;
@@ -597,7 +603,7 @@ int daos_kv_list(daos_handle_t oh, daos_handle_t th, uint32_t *nr,
 
 int daos_array_generate_oid(daos_handle_t coh, daos_obj_id_t *oid, bool add_attr, daos_oclass_id_t cid,
                             daos_oclass_hints_t hints, uint32_t args) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
@@ -605,13 +611,13 @@ int daos_array_generate_oid(daos_handle_t coh, daos_obj_id_t *oid, bool add_attr
 int daos_array_create(daos_handle_t coh, daos_obj_id_t oid, daos_handle_t th,
                       daos_size_t cell_size, daos_size_t chunk_size,
                       daos_handle_t *oh, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
 
 int daos_array_destroy(daos_handle_t oh, daos_handle_t th, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
@@ -619,7 +625,7 @@ int daos_array_destroy(daos_handle_t oh, daos_handle_t th, daos_event_t *ev) {
 int daos_array_open(daos_handle_t coh, daos_obj_id_t oid, daos_handle_t th,
                     unsigned int mode, daos_size_t *cell_size,
                     daos_size_t *chunk_size, daos_handle_t *oh, daos_event_t *ev) {
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
@@ -628,14 +634,14 @@ int daos_array_open_with_attr(daos_handle_t coh, daos_obj_id_t oid, daos_handle_
                               unsigned int mode, daos_size_t cell_size, daos_size_t chunk_size,
                               daos_handle_t *oh, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
 
 int daos_array_close(daos_handle_t oh, daos_event_t *ev) {
 
-    //std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
+    std::cout << "File: " << __FILE__ << ", Line: " << __LINE__ << ", Function: " << __func__ << std::endl;
     return 0;
 
 }
