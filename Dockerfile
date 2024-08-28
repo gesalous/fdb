@@ -7,7 +7,7 @@ ENV metkit_ROOT=/usr/local
 
 RUN apt-get update && apt-get upgrade -y
 
-RUN DEBIAN_FRONTEND=noninteractive TZ=Europe/Athens apt install -y wget git cmake g++ gfortran python3 python3-pip libnuma-dev libboost-all-dev bc
+RUN DEBIAN_FRONTEND=noninteractive TZ=Europe/Athens apt install -y wget git cmake g++ gfortran python3 python3-pip libnuma-dev libboost-all-dev bc RUN uuid-dev
 RUN apt install -y vim gdb
 
 RUN pip3 install eccodes
@@ -82,17 +82,16 @@ RUN cp /grib/o3_new.grib /tmp/0.grib && \
     cp /grib/o3_new.grib /tmp/14.grib && \
     cp /grib/o3_new.grib /tmp/15.grib
 
-RUN git clone -b embed_bloom_filters_in_sst https://github.com/Toutou98/parallax.git && \
+RUN git clone -b embed_bloom_filters_in_sst https://github.com/CARV-ICS-FORTH/parallax.git && \
     cd parallax && \
     rm -rf build && \
     mkdir build && \
     cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE="Debug" -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=ON && \
+    cmake .. -DCMAKE_BUILD_TYPE="Debug" -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=ON -DKV_MAX_SIZE_64K=ON && \
     make -j10 && \
     make install 
 
 # fdb-kv
-RUN apt install uuid-dev -y
 
 RUN mkdir /tmp/parallax
 COPY . /fdb-kv
