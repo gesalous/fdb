@@ -1,10 +1,17 @@
 cmake_minimum_required( VERSION 3.12 FATAL_ERROR )
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package( ecbuild 3.7 REQUIRED HINTS ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../ecbuild)
 
 # Search for the library in /home/gesalous/local/lib
 find_library(PARALLAX_LIBRARY 
              NAMES parallax
+	     HINTS ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib64)
+
+
+# Search for the library in /home/gesalous/local/lib
+find_library(PARALLAX_NET_LIBRARY 
+             NAMES parallax_net_lib
 	     HINTS ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib64)
 
 # Search for the header in /home/gesalous/local/include
@@ -22,6 +29,16 @@ if(PARALLAX_LIBRARY AND PARALLAX_INCLUDE_DIR)
 else()
   message(FATAL_ERROR "Parallax not found!")
 endif()
+
+
+if(PARALLAX_NET_LIBRARY)
+  message(INFO  "--> Parallax NETWORK LIBRARY found!")
+  message(INFO " --> Library: ${PARALLAX_NET_LIBRARY}")
+  message(INFO " --> Include directory: ${PARALLAX_INCLUDE_DIR}")
+else()
+  message(WARN "Parallax NETWORK library not found!")
+endif()
+
 
 project( fdb5 LANGUAGES C CXX )
 
@@ -51,6 +68,7 @@ ecbuild_add_option( FEATURE GRIB
                     DEFAULT ON
                     CONDITION eccodes_FOUND
                     DESCRIPTION "Support for GRIB via eccodes")
+
 
 ecbuild_find_package( NAME metkit VERSION 1.5 REQUIRED )
 
